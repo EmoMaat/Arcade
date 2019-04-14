@@ -9,9 +9,6 @@ class HubInterface{
         this.createCanvases();
         
         for(let p = 0; p < Math.ceil(games.length / 6); p++){
-            // var placement_x = canvas.width / 6 + (p * canvas.width / 1.15);  //distance between each wrapper
-			// var placement_y = canvas.height / 3.5;
-            
             this.page[p] = {
                 _x: (this.canvas.width / 2) * (p + 1),  // always middle of the screen (centered)
 				y: this.canvas.height / 2,            // always middle of the screen (centered)
@@ -216,4 +213,62 @@ class HubInterface{
 		this.HubHeaderCtx.stroke();
 		this.HubHeaderCtx.closePath();
     }
+}
+
+function loadingBar(text, callback){
+    if(document.getElementById("loadingBar") != null)
+        return console.log("A loading bar is already active")
+
+    quit_open_game();
+    remove_all_canvases();
+    
+    let loadingBar = document.createElement('canvas');
+    loadingBar.id = 'loadingBar';
+    loadingBar.width = canvas.width;
+    loadingBar.height = canvas.height;
+    loadingBar.style.position = "absolute";
+    loadingBar.style.cursor = "none";
+    document.body.appendChild(loadingBar);
+
+    var lcanvas = document.getElementById("loadingBar");		// canvas stuff
+    var ctx = lcanvas.getContext("2d");			        // canvas stuff
+
+    // We draw a fake progressbar
+    var counter = 0, factor = 1;
+	var timer = new Interval(() => { // timer function for progress bar
+		counter = counter + factor;
+		
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		
+		ctx.font = '48pt Segoe UI';
+		ctx.strokeStyle = "rgb(50, 50, 50)"; 
+		ctx.textAlign = "center";
+		
+		ctx.fillText("Loading " + text + "...", canvas.width / 2, 500 + 24 /* fontHeight / 2*/);
+	
+		ctx.beginPath();
+		ctx.lineWidth = 14;
+		ctx.rect(canvas.width / 4, 600, canvas.width / 2 , 30); 
+		ctx.fillStyle = '#fff'; 
+		ctx.fillRect(canvas.width / 4, 600, counter * (canvas.width / 2) / 100, 30);
+		
+		ctx.stroke();
+		ctx.closePath();
+		
+		// setting the progressvalue of the bar
+		if (counter >= 10 && counter <= 59) {
+			damping = Math.floor(Math.random() * (300 - 25)) + 6;
+			factor = Math.max((100 - counter) / damping, '0.5');
+		} else if (counter >= 60 && counter < 100) {
+			damping = Math.floor(Math.random() * (50 - 25)) + 3;
+			factor = Math.max((100 - counter) / damping, '0.5');
+		} else if (counter > 100) {
+			// when done loading we load the hub
+            timer.stop();
+            remove_all_canvases();
+
+			// start the hub
+			callback();
+		};
+	}, 20);
 }
