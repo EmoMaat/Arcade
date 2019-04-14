@@ -1,5 +1,6 @@
 class HubInterface{
     constructor(){
+        move.continuous = false;
         this.page = []
         this.current_button = 0;
         this._current_page = 0;
@@ -37,7 +38,9 @@ class HubInterface{
                 this.page[p].buttons.push(new HubButton(
                     placement_x + this.canvas.width * p, 
                     placement_y, 
-                    games[p * 6 + b], "test.png", games[0], this.ctx
+                    games[p * 6 + b], 
+                    games[p * 6 + b].replace(/\s/g, ''), 
+                    this.ctx
                 ));
             }
         }
@@ -95,19 +98,21 @@ class HubInterface{
     set current_page(value){
         value = value - this._current_page;
 
+        this.in_tranzit = true;
+
         var self = this;
         var distance = self.canvas.width;
         this.interval = new Interval(function(){
-            self.in_tranzit = true;
             if(distance > 0){
-                distance -= 10;
+                distance -= 20;
                 for(let p = 0; p < self.page.length; p++){
-                    self.page[p].x -= 10 * value;
+                    self.page[p].x -= 20 * value;
                 }
                 self.update();
             } else{
                 self.in_tranzit = false;
                 self.interval.stop();
+                self.update();
             }
         }); 
 
@@ -128,14 +133,47 @@ class HubInterface{
                 }
             } 
         }
-    }
 
-    checkCollisions(){
-
-    }
-    
-    draw(){
-        
+        //halfwidthx = half the distance between most left item and left side of the bar under "GAME HUB"
+		var halfwidthx = (this.canvas.width / 10 * 9 - (this.canvas.width / 6 * 2 + (this.canvas.width / 4.0186046511627906976744186046512) * 2)) / 2;
+		//halfwidthy = half the distance between the middle and an item
+		var halfwidthy = this.canvas.height / 2 - (this.canvas.height / 4 + this.canvas.height / 8.5);
+		
+		// check if we should make arrows pointing up or down
+		if(this.current_page - 1 >= 0 && !this.in_tranzit){			
+			var x1 = this.canvas.width / 10 - (halfwidthx * 1.3);
+			var x2 = this.canvas.width / 10;
+			var x3 = this.canvas.width / 10;
+			
+			var y1 = this.canvas.height / 1.55 - halfwidthy * 2;
+			var y2 = this.canvas.height / 1.55 - halfwidthy * 1.45;
+			var y3 = this.canvas.height / 1.55 - halfwidthy * 1.25 - (halfwidthy * 1.25);
+			
+			this.ctx.beginPath();
+			this.ctx.moveTo(x1, y1);
+			this.ctx.lineTo(x2, y2);
+			this.ctx.lineTo(x3, y3);
+			
+			this.ctx.fillStyle = "#fff";
+			this.ctx.fill();
+		}
+		if(this.current_page + 1 !== this.page.length && !this.in_tranzit){
+			var x1 = this.canvas.width / 10 * 9 + (halfwidthx * 1.3);
+			var x2 = this.canvas.width / 10 * 9;
+			var x3 = this.canvas.width / 10 * 9;
+			
+			var y1 = this.canvas.height / 1.55 - halfwidthy * 2;
+			var y2 = this.canvas.height / 1.55 - halfwidthy * 1.45;
+			var y3 = this.canvas.height / 1.55 - halfwidthy * 1.25 - (halfwidthy * 1.25);
+			
+			this.ctx.beginPath();
+			this.ctx.moveTo(x1, y1);
+			this.ctx.lineTo(x2, y2);
+			this.ctx.lineTo(x3, y3);
+			
+			this.ctx.fillStyle = "#fff";
+			this.ctx.fill();
+		}
     }
 
     createCanvases(){
