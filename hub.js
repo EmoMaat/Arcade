@@ -219,7 +219,8 @@ function loadingBar(text, callback){
     if(document.getElementById("loadingBar") != null)
         return console.log("A loading bar is already active")
 
-    quit_open_game();
+    exit_open_game();
+    exit_open_interfaces();
     remove_all_canvases();
     
     let loadingBar = document.createElement('canvas');
@@ -263,12 +264,15 @@ function loadingBar(text, callback){
 			damping = Math.floor(Math.random() * (50 - 25)) + 3;
 			factor = Math.max((100 - counter) / damping, '0.5');
 		} else if (counter > 100) {
-			// when done loading we load the hub
+			// remove the loading bar
             timer.stop();
             remove_all_canvases();
 
-			// start the hub
-			callback();
+            // start the given function
+            if(typeof callback === "string")
+                eval(callback);
+            else if(typeof callback === "function")
+			    callback();
 		};
 	}, 20);
 }
