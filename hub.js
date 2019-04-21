@@ -98,6 +98,12 @@ class HubInterface{
         this.update();
     }
 
+    exit(){
+        interfaces.hub.object = {};
+        interfaces.hub.active = false;
+        this.interval.stop()
+    }
+
     // change the current page upon vallue change
     set current_page(value){
         value = value - this._current_page;
@@ -230,13 +236,12 @@ function loadingBar(text, game){
     if(document.getElementById("loadingBar") != null)
         return console.log("A loading bar is already active")
 
-    if(!(typeof game === "string" && typeof window[game.replace(/\s/,'')] === "function"))
-        return console.log("Trying to load a non-existent game")
-
     exit_open_game();
     exit_open_interfaces();
     remove_all_canvases();
     
+    currentGame = game;
+
     // create a element
     let loadingBar = document.createElement('canvas');
     loadingBar.id = 'loadingBar';
@@ -281,7 +286,6 @@ function loadingBar(text, game){
 		} else if (counter > 100) {
 			// remove the loading bar
             timer.stop();
-            remove_all_canvases();
 
             // start the given function
             load(game)
@@ -294,8 +298,5 @@ function load(game){
     exit_open_interfaces();
     remove_all_canvases();
 
-    if(typeof game === "string" && typeof window[game.replace(/\s/,'')] === "function")
-        eval(game.replace(/\s/,''));
-    else if(typeof game === "function")
-        callback();
+    eval(game);
 }
