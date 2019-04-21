@@ -232,17 +232,19 @@ class HubInterface{
     }
 }
 
-function loadingBar(text, callback){
+function loadingBar(text, game){
     if(document.getElementById("loadingBar") != null)
         return console.log("A loading bar is already active")
 
-    if(!((typeof callback === "string" && typeof window[callback.replace(/\s/,'')] === "function") || typeof callback === "function"))
+    if(!(typeof game === "string" && typeof window[game.replace(/\s/,'')] === "function"))
         return console.log("Trying to load a non-existent game")
 
     exit_open_game();
     exit_open_interfaces();
     remove_all_canvases();
     
+    currentGame = game;
+
     // create a element
     let loadingBar = document.createElement('canvas');
     loadingBar.id = 'loadingBar';
@@ -290,7 +292,7 @@ function loadingBar(text, callback){
             remove_all_canvases();
 
             // start the given function
-            load(callback)
+            load(game)
 		};
 	}, 20);
 }
@@ -302,6 +304,4 @@ function load(game){
 
     if(typeof game === "string" && typeof window[game.replace(/\s/,'')] === "function")
         eval(game.replace(/\s/,''))();
-    else if(typeof game === "function")
-        callback();
 }
