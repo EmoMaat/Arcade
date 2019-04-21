@@ -298,5 +298,5 @@ function load(game){
     exit_open_interfaces();
     remove_all_canvases();
 
-    eval(game);
+    eval(game)();
 }
