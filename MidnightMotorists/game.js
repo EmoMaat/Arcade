@@ -1,38 +1,27 @@
-var midnightMotoristsGame;
+
 var motorTitle = new Image();
 motorTitle.src = "MidnightMotorists/sprites/title.png";
 
 function MidnightMotorists(){
-	if(typeof gameInterval !== "undefined")
-	gameInterval.stop();
 
-	if(typeof overlayInterval !== "undefined")
-        overlayInterval.stop();
+	new MenuInterface();
 
-	menuOverlay = new MenuOverlay();
-	MidnightMotoristsMainMenuOverlay();
-
-    menuOverlay.backgroundGame = new MidnightMotoristsGame();
-    menuOverlay.backgroundGame.overlay = true;
-	midnightMotoristsGame = menuOverlay.backgroundGame;
-
-	overlayInterval = new Interval(function(){ 
-        //ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "black"
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-		menuOverlay.update();
-		ctx.drawImage(motorTitle,canvas.width/2 - motorTitle.width/2,100);
-	}, 15);
-}
-
-function MidnightMotoristsMainMenuOverlay(){
-	menuOverlay.buttons = [
-		new Button(canvas.width/2 - 200, canvas.height - 510 + 90, 400, 30, "START GAME", "newMidnightMotoristsGame()"),
-		new Button(canvas.width/2 - 200, canvas.height - 430 + 90, 400, 30, "HIGH SCORES", "loadHighscores('" + currentGame + "', 0,true)"),
-		new Button(canvas.width/2 - 200, canvas.height - 350 + 90, 400, 30, "HOW TO PLAY", "loadInstructions()"),
-		new Button(canvas.width/2 - 200, canvas.height - 270 + 90, 400, 30,"EXIT", "loadHub()")
+    // interfaces.menu.object.backgroundGame = new MidnightMotoristsGame();
+    interfaces.menu.object.buttons = [
+		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
+		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
+        ["START GAME", "newMidnightMotoristsGame()"]
 	];
+
+	// overlayInterval = new Interval(function(){ 
+    //     //ctx.clearRect(0, 0, canvas.width, canvas.height);
+    //     ctx.fillStyle = "black"
+    //     ctx.fillRect(0, 0, canvas.width, canvas.height);
+	// 	menuOverlay.update();
+	// 	ctx.drawImage(motorTitle,canvas.width/2 - motorTitle.width/2,100);
+	// }, 15);
 }
+
 
 function newMidnightMotoristsGame(){
     if(typeof gameInterval !== "undefined")
