@@ -89,7 +89,19 @@ class HubInterface{
             }
         });
 
+        this.interval = new Interval(()=>{
+            if(map[13] || gmap[0].ButtonA){
+                loadingBar(games[this._current_page * 6 + this.current_button], games[this._current_page * 6 + this.current_button])
+            }
+        });
+
         this.update();
+    }
+
+    exit(){
+        interfaces.hub.object = {};
+        interfaces.hub.active = false;
+        this.interval.stop()
     }
 
     // change the current page upon vallue change
@@ -100,7 +112,7 @@ class HubInterface{
 
         var self = this;
         var distance = self.canvas.width;
-        this.interval = new Interval(function(){
+        this.cp_interval = new Interval(function(){
             if(distance > 0){
                 distance -= 20;
                 for(let p = 0; p < self.page.length; p++){
@@ -109,7 +121,7 @@ class HubInterface{
                 self.update();
             } else{
                 self.in_tranzit = false;
-                self.interval.stop();
+                self.cp_interval.stop();
                 self.update();
             }
         }); 
@@ -224,6 +236,9 @@ function loadingBar(text, callback){
     if(document.getElementById("loadingBar") != null)
         return console.log("A loading bar is already active")
 
+    if(!((typeof callback === "string" && typeof window[callback.replace(/\s/,'')] === "function") || typeof callback === "function"))
+        return console.log("Trying to load a non-existent game")
+
     exit_open_game();
     exit_open_interfaces();
     remove_all_canvases();
@@ -275,10 +290,7 @@ function loadingBar(text, callback){
             remove_all_canvases();
 
             // start the given function
-            if(typeof callback === "string")
-                eval(callback);
-            else if(typeof callback === "function")
-			    callback();
+            load(callback)
 		};
 	}, 20);
 }
@@ -288,8 +300,8 @@ function load(game){
     exit_open_interfaces();
     remove_all_canvases();
 
-    if(typeof game === "string" && window[game.replace(/\s/,'')] === "function")
-        eval(game.replace(/\s/,''));
+    if(typeof game === "string" && typeof window[game.replace(/\s/,'')] === "function")
+        eval(game.replace(/\s/,''))();
     else if(typeof game === "function")
         callback();
 }
