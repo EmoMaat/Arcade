@@ -92,6 +92,7 @@ class HubInterface{
         this.update();
     }
 
+    // change the current page upon vallue change
     set current_page(value){
         value = value - this._current_page;
 
@@ -130,6 +131,10 @@ class HubInterface{
                 }
             } 
         }
+
+        /////
+        // create the triangles
+        /////
 
         //halfwidthx = half the distance between most left item and left side of the bar under "GAME HUB"
 		var halfwidthx = (this.canvas.width / 10 * 9 - (this.canvas.width / 6 * 2 + (this.canvas.width / 4.0186046511627906976744186046512) * 2)) / 2;
@@ -223,6 +228,7 @@ function loadingBar(text, callback){
     exit_open_interfaces();
     remove_all_canvases();
     
+    // create a element
     let loadingBar = document.createElement('canvas');
     loadingBar.id = 'loadingBar';
     loadingBar.width = canvas.width;
@@ -275,4 +281,15 @@ function loadingBar(text, callback){
 			    callback();
 		};
 	}, 20);
+}
+
+function load(game){
+    exit_open_game();
+    exit_open_interfaces();
+    remove_all_canvases();
+
+    if(typeof game === "string" && window[game.replace(/\s/,'')] === "function")
+        eval(game.replace(/\s/,''));
+    else if(typeof game === "function")
+        callback();
 }
