@@ -288,7 +288,7 @@ function load(game){
     exit_open_interfaces();
     remove_all_canvases();
 
-    if(typeof game === "string" && window[game.replace(/\s/,'')] === "function")
+    if(typeof game === "string" && typeof window[game.replace(/\s/,'')] === "function")
         eval(game.replace(/\s/,''));
     else if(typeof game === "function")
         callback();
