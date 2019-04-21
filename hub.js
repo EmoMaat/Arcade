@@ -91,7 +91,7 @@ class HubInterface{
 
         this.interval = new Interval(()=>{
             if(map[13] || gmap[0].ButtonA){
-                loadingBar(games[this._current_page * 6 + this.current_button], games[this._current_page * 6 + this.current_button])
+                loadingBar(this.page[this.current_page].buttons[this.current_button].text, this.page[this.current_page].buttons[this.current_button].game)
             }
         });
 
