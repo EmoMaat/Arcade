@@ -3,13 +3,13 @@ function Pacman(){
 	interfaces.menu.object.buttons = [
 		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
 		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
-		["START GAME", "newPacManGame()"]
+		["START GAME", "newPacmanGame()"]
 	];
 
 	interfaces.menu.object.backgroundGame = interfaces.game.object = new PacManGame();
 }
 
-function newPacManGame(){	
+function newPacmanGame(){	
 	exit_open_game();
 	exit_open_interfaces();
 	
@@ -74,8 +74,10 @@ class PacManGame{
 	}
 
 	exit(){
-		document.getElementById("PacManCanvas").parentElement.removeChild(document.getElementById("PacManCanvas"))
-		document.getElementById("PacManMap").parentElement.removeChild(document.getElementById("PacManMap"))
+		if(document.getElementById("PacManCanvas") !== null && document.getElementById("PacManMap") !== null){
+			document.getElementById("PacManCanvas").parentElement.removeChild(document.getElementById("PacManCanvas"))
+			document.getElementById("PacManMap").parentElement.removeChild(document.getElementById("PacManMap"))
+		}
 
 		interfaces.game.interval.stop();
 		interfaces.game.object = {};
