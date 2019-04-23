@@ -1,5 +1,5 @@
 class MidnightMotoristsPlayer{
-    constructor(x, roadlanes, window_scale, rainTheme){
+    constructor(x, roadlanes, window_scale, rainTheme, ctx){
         this.roadlanes = roadlanes;
         this.speed = 10;
         this.kmph = 0;
@@ -10,6 +10,7 @@ class MidnightMotoristsPlayer{
         this.angle = 0;
         this.crash = false;
 
+        this.ctx = ctx;
         this.sprite = new Image();
         this.sprite.src = rainTheme ? "MidnightMotorists/sprites/player-n.png" : "MidnightMotorists/sprites/player.png";
 
@@ -88,62 +89,49 @@ class MidnightMotoristsPlayer{
                 this.speed = 0;
             }
 
-            ctx.save();                                                         // save the rest of the canvas
-            ctx.translate(this.x + this.width / 2, this.y);                     // set the rotation point
-            ctx.rotate(this.angle);                                             // rotate the image
-            ctx.drawImage(this.sprite, -(this.width / 2), -(this.height / 2));  // draw
-            ctx.restore();                                                      // restore the rest of the canvas
+            this.ctx.save();                                                         // save the rest of the canvas
+            this.ctx.translate(this.x + this.width / 2, this.y);                     // set the rotation point
+            this.ctx.rotate(this.angle);                                             // rotate the image
+            this.ctx.drawImage(this.sprite, -(this.width / 2), -(this.height / 2));  // draw
+            this.ctx.restore();                                                      // restore the rest of the canvas
         } else
-            ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
+            this.ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
 
-        ctx.font = "30px Arial";
-        ctx.fillStyle ="white";
-        ctx.fillText("LAP:   " + this.lap,10,100); 
-        ctx.fillText("KMPH:   " + Math.round(this.kmph),10,150); 
+        this.ctx.font = "30px Arial";
+        this.ctx.fillStyle ="white";
+        this.ctx.fillText("LAP:   " + (this.lap + 1),10,100); 
+        this.ctx.fillText("KMPH:   " + Math.round(this.kmph),10,150); 
     }
 
     drawLine(x1, y1, x2, y2, opacity, lineWidth){
         var color = opacity;
-        ctx.strokeStyle = "rgb("+ color + "," + color + "," + color + ")"; 
-        //ctx.strokeStyle = "yellow";
+        this.ctx.strokeStyle = "rgb("+ color + "," + color + "," + color + ")"; 
+        //this.ctx.strokeStyle = "yellow";
 
-		ctx.lineWidth = lineWidth;
-		ctx.beginPath();
+		this.ctx.lineWidth = lineWidth;
+		this.ctx.beginPath();
 
-        ctx.moveTo(x1, y1);
-		ctx.lineTo(x2, y2);
-		ctx.stroke(); 
+        this.ctx.moveTo(x1, y1);
+		this.ctx.lineTo(x2, y2);
+		this.ctx.stroke(); 
     }
 }
 
 class MidnightMotoristsCar{
-    constructor(x, lane, direction, speed, window_scale, rainTheme){
+    constructor(x, lane, sprite, speed, window_scale, ctx){
         this.x = x; 
         this.y = lane; // y in px, center. SHOULD NOT CHANGE
-            
-		this.window_scale = window_scale;
-        this.sprite = new Image();
-        this.dir = direction;
-        
-        if(this.dir == 0){
-            this.sprite.src = rainTheme ? "MidnightMotorists/sprites/dir0-n.png" : "MidnightMotorists/sprites/dir0.png";
-            this.speed = -speed; // going forwards
-        } else {
-            this.sprite.src = rainTheme ? "MidnightMotorists/sprites/dir1-n.png" : "MidnightMotorists/sprites/dir1.png";
-            this.speed = speed; // going backwards
-        }
+        this.sprite = sprite;
+        this.speed = speed;
 
+        this.ctx = ctx;
+		this.window_scale = window_scale;
+        
         this.height = 73 * this.window_scale;
         this.width = 104 * this.window_scale;
     }
 
-    update(){
-        this.x += this.speed;
-
-        this.draw();
-    }
-
-    draw(){
-        ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
+    update(){        
+        this.ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
     }
 }
