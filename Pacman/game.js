@@ -12,6 +12,7 @@ function Pacman(){
 function newPacmanGame(){	
 	exit_open_game();
 	exit_open_interfaces();
+	remove_all_canvases();
 	
 	interfaces.game.object = new PacManGame();
 	
