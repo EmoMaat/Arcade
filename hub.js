@@ -6,6 +6,9 @@ class HubInterface{
         this._current_page = 0;
         this.in_tranzit = false;
 
+        interfaces.hub.active = true;
+        interfaces.hub.object = this;
+
         this.createCanvases();
         
         for(let p = 0; p < Math.ceil(games.length / 6); p++){
@@ -41,9 +44,6 @@ class HubInterface{
                 ));
             }
         }
-
-        interfaces.hub.active = true;
-        interfaces.hub.object = this;
 
         move._right.setEventListener(()=>{
             if((this.current_button == 2 || this.current_button == 5) && !this.in_tranzit){
