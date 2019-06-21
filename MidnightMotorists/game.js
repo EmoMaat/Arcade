@@ -2,7 +2,7 @@ function MidnightMotorists(){
 	new MenuInterface();
 
     interfaces.menu.object.backgroundGame = new MidnightMotoristsGame();
-    interfaces.menu.object.header = "MidnightMotorists/sprits/title.png";
+    interfaces.menu.object.header = "MidnightMotorists/sprites/title.png";
     interfaces.menu.object.buttons = [
 		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
 		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
