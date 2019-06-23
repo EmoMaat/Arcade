@@ -63,12 +63,6 @@ class TetrisGame{
                     this.player.position.x--;
             });
 
-            move._up.setEventListener(() => {
-                this.player.RotateMatrix();
-                if(this.MatrixCollides())           // if we collide with a wall
-                    this.player.RotateMatrix(1);    // rotate back
-            });
-
             move._down.continuous = true;
             move._down.setEventListener(() => {
                 this.dropTimer++;
@@ -87,6 +81,15 @@ class TetrisGame{
 
     update(){
         if(!this.gameover){
+            if (gmap[0].buttonA || map[13]){
+                this.player.RotateMatrix();
+                if(this.MatrixCollides())           // if we collide with a wall
+                    this.player.RotateMatrix(1);    // rotate back
+
+                map[13] = false;
+                gmap[0].buttonA = false;
+            }
+
             this.updateCurrentMatrixPosition();
             if(this.MatrixCollides()){
                 // can we place new blocks on the first line without collision?
