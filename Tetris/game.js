@@ -1,21 +1,18 @@
 function Tetris(){
-    newTetrisGame();
-    // new MenuInterface();
+    new MenuInterface();
 
-    // interfaces.menu.object.backgroundGame = new TetrisGame();
-    // interfaces.menu.object.header = "MidnightMotorists/sprits/title.png";
-    // interfaces.menu.object.buttons = [
-	// 	["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
-	// 	["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
-    //     ["START GAME", "newTetrisGame()"]
-	// ];
+    interfaces.menu.object.backgroundGame = new TetrisGame();
+    interfaces.menu.object.header = "MidnightMotorists/sprits/title.png";
+    interfaces.menu.object.buttons = [
+		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
+		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
+        ["START GAME", "newTetrisGame()"]
+	];
 }
 
 function newTetrisGame(){
-    // exit_open_game();
-    // exit_open_interfaces();
-    
-    // interfaces.menu.object.backgroundGame.audioMenu.pause();
+    exit_open_game();
+    exit_open_interfaces();
 	
 	interfaces.game.object = new TetrisGame();
 	
@@ -48,61 +45,45 @@ class TetrisGame{
         this.dropMinInterval = 14;
         this.gameoverTimer = 240;
 
-        this.ctx.strokeStyle = "#ffffff";
-        this.TetrisNextCtx.strokeStyle = "#ffffff";
-        this.TetrisScoreCtx.strokeStyle = "#ffffff";
-
-        this.ctx.fillStyle = "white";
-        this.TetrisNextCtx.fillStyle = "white";
-        this.TetrisScoreCtx.fillStyle = "white";
-
-        this.ctx.lineWidth = 4;
-        this.TetrisNextCtx.lineWidth = 5;
-        this.TetrisScoreCtx.lineWidth = 5;
-
-        this.ctx.textAlign = "center";
-        this.TetrisNextCtx.textAlign = "center";
-        this.TetrisScoreCtx.textAlign = "center";
-
-		this.ctx.font = "100px segoe ui";
-		this.TetrisNextCtx.font = "50px segoe ui";
-		this.TetrisScoreCtx.font = "50px segoe ui";
-
-        // keychecking
-        move._left.setEventListener(() => {
-            this.player.position.x--;
-            if(this.MatrixCollides())
+        if(!interfaces.menu.active){
+            // keychecking
+            move._left.setEventListener(() => {
+                this.player.position.x--;
+                if(this.MatrixCollides())
+                    this.player.position.x++;
+            });
+            move._right.setEventListener(() => {
                 this.player.position.x++;
-        });
-        move._right.setEventListener(() => {
-            this.player.position.x++;
-            if(this.MatrixCollides())
-                this.player.position.x--;
-        });
+                if(this.MatrixCollides())
+                    this.player.position.x--;
+            });
 
-        move._right.setEventListener(() => {
-            this.player.position.x++;
-            if(this.MatrixCollides())
-                this.player.position.x--;
-        });
+            move._right.setEventListener(() => {
+                this.player.position.x++;
+                if(this.MatrixCollides())
+                    this.player.position.x--;
+            });
 
-        move._up.setEventListener(() => {
-            this.player.RotateMatrix();
-            if(this.MatrixCollides())           // if we collide with a wall
-                this.player.RotateMatrix(1);    // rotate back
-        });
+            move._up.setEventListener(() => {
+                this.player.RotateMatrix();
+                if(this.MatrixCollides())           // if we collide with a wall
+                    this.player.RotateMatrix(1);    // rotate back
+            });
 
-        move._down.continuous = true;
-        move._down.setEventListener(() => {
-            this.dropTimer++;
-            if(this.dropTimer >= this.dropMinInterval){
-                this.player.position.y++;
-                this.dropTimer = 0;
-            }
-        });
+            move._down.continuous = true;
+            move._down.setEventListener(() => {
+                this.dropTimer++;
+                if(this.dropTimer >= this.dropMinInterval){
+                    this.player.position.y++;
+                    this.dropTimer = 0;
+                }
+            });
+        }
 
-        this.UpdateQueue();
-        this.UpdateScore();
+        if(!interfaces.menu.active){
+            this.UpdateQueueCanvas();
+            this.UpdateScoreCanvas();
+        }
     }
 
     update(){
@@ -111,12 +92,20 @@ class TetrisGame{
             if(this.MatrixCollides()){
                 // can we place new blocks on the first line without collision?
                 if(this.player.position.y === 0)
-                    this.gameover = true;
+                    if(!interfaces.menu.active)
+                        this.gameover = true;
+                    else { // if we are in the menu, just clear the grid
+                        this.grid = [];
+                        for(let r = 0; r < this.gridrows; r++)
+                            this.grid.push(new Array(this.gridcollums).fill(0))
+                    }
+
                 else {
                     this.MergeMatrixWithGrid();
                     this.player.position.x = Math.floor(this.grid[0].length / 2) - 1;
                     this.player.ShiftQueue();
-                    this.UpdateQueueCanvas();
+                    if(!interfaces.menu.active)
+                        this.UpdateQueueCanvas();
                 }
             }
             this.UpdateGridCanvas();
@@ -149,7 +138,13 @@ class TetrisGame{
 
         this.canvas = document.getElementById("TetrisGameCanvas");		// canvas stuff
         this.ctx = this.canvas.getContext("2d");			        // canvas stuff
-
+        
+        this.ctx.strokeStyle = "#ffffff";
+        this.ctx.fillStyle = "white";
+        this.ctx.lineWidth = 4;
+        this.ctx.textAlign = "center";
+		this.ctx.font = "100px segoe ui";
+		
         if(!interfaces.menu.active){
             let TetrisNextCanvas = document.createElement('canvas');
             TetrisNextCanvas.id = 'TetrisNextCanvas';
@@ -165,6 +160,13 @@ class TetrisGame{
             this.TetrisNextCanvas = document.getElementById("TetrisNextCanvas");		// canvas stuff
             this.TetrisNextCtx = this.TetrisNextCanvas.getContext("2d");			        // canvas stuff
 
+            this.TetrisNextCtx.strokeStyle = "#ffffff";
+            this.TetrisNextCtx.fillStyle = "white";
+            this.TetrisNextCtx.lineWidth = 5;
+            this.TetrisNextCtx.font = "50px segoe ui";
+            this.TetrisNextCtx.textAlign = "center";
+
+
             let TetrisScoreCanvas = document.createElement('canvas');
             TetrisScoreCanvas.id = 'TetrisScoreCanvas';
             TetrisScoreCanvas.width = canvas.width / 8;
@@ -178,6 +180,13 @@ class TetrisGame{
 
             this.TetrisScoreCanvas = document.getElementById("TetrisScoreCanvas");		// canvas stuff
             this.TetrisScoreCtx = this.TetrisScoreCanvas.getContext("2d");			        // canvas stuff
+
+            this.TetrisScoreCtx.strokeStyle = "#ffffff";
+            this.TetrisScoreCtx.fillStyle = "white";
+            this.TetrisScoreCtx.lineWidth = 5;
+            this.TetrisScoreCtx.font = "50px segoe ui";
+            this.TetrisScoreCtx.textAlign = "center";
+
         }
     }
 
@@ -295,9 +304,11 @@ class TetrisGame{
             });
         });
 
-        this.player.score += 20;    // for every new block add 20 points
-        this.ProcessMatrixPoints();
-        this.UpdateScoreCanvas();
+        if(!interfaces.menu.active){
+            this.player.score += 20;    // for every new block add 20 points
+            this.ProcessMatrixPoints();
+            this.UpdateScoreCanvas();
+        }
     }
 
     ProcessMatrixPoints(){
