@@ -2,7 +2,6 @@ function Tetris(){
     new MenuInterface();
 
     interfaces.menu.object.backgroundGame = new TetrisGame();
-    interfaces.menu.object.header = "MidnightMotorists/sprits/title.png";
     interfaces.menu.object.buttons = [
 		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
 		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
