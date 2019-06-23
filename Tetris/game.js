@@ -81,7 +81,7 @@ class TetrisGame{
 
     update(){
         if(!this.gameover){
-            if (gmap[0].buttonA || map[13]){
+            if ((gmap[0].buttonA || map[13]) && !interfaces.menu.active){
                 this.player.RotateMatrix();
                 if(this.MatrixCollides())           // if we collide with a wall
                     this.player.RotateMatrix(1);    // rotate back
