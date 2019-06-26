@@ -57,12 +57,6 @@ class TetrisGame{
                     this.player.position.x--;
             });
 
-            move._right.setEventListener(() => {
-                this.player.position.x++;
-                if(this.MatrixCollides())
-                    this.player.position.x--;
-            });
-
             move._down.continuous = true;
             move._down.setEventListener(() => {
                 this.dropTimer++;
