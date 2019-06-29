@@ -29,7 +29,7 @@ class TetrisGame{
         for(let r = 0; r < this.gridrows; r++)
             this.grid.push(new Array(this.gridcollums).fill(0))
 
-        this.window_scale = canvas.height / 1080
+        this.window_scale = window.height / 1080
         this.blockSize = 40 * this.window_scale;
         this.gameover = false;
 
@@ -125,7 +125,7 @@ class TetrisGame{
         }
     }
 
-    // creates all required canvases
+    // creates all required windowes
     initCanvas(){
         let TetrisGameCanvas = document.createElement('canvas');
         TetrisGameCanvas.id = 'TetrisGameCanvas';
@@ -138,8 +138,8 @@ class TetrisGame{
         TetrisGameCanvas.style.cursor = "none";
         document.body.appendChild(TetrisGameCanvas);
 
-        this.canvas = document.getElementById("TetrisGameCanvas");		// canvas stuff
-        this.ctx = this.canvas.getContext("2d");			        // canvas stuff
+        this.canvas = document.getElementById("TetrisGameCanvas");		// window stuff
+        this.ctx = this.canvas.getContext("2d");			        // window stuff
         
         this.ctx.strokeStyle = "#ffffff";
         this.ctx.fillStyle = "white";
@@ -150,17 +150,17 @@ class TetrisGame{
         if(!interfaces.menu.active){
             let TetrisNextCanvas = document.createElement('canvas');
             TetrisNextCanvas.id = 'TetrisNextCanvas';
-            TetrisNextCanvas.width = canvas.width / 8;
-            TetrisNextCanvas.height = (canvas.height / 6) * 4.5;
-            TetrisNextCanvas.style.left = (canvas.width * (3/4)) //+ canvas.width / 4;
-            TetrisNextCanvas.style.top = (canvas.height / 6) * 0.5;
+            TetrisNextCanvas.width = window.width / 8;
+            TetrisNextCanvas.height = (window.height / 6) * 4.5;
+            TetrisNextCanvas.style.left = (window.width * (3/4)) //+ window.width / 4;
+            TetrisNextCanvas.style.top = (window.height / 6) * 0.5;
             TetrisNextCanvas.style.zIndex = 1;
             TetrisNextCanvas.style.position = "absolute";
             TetrisNextCanvas.style.cursor = "none";
             document.body.appendChild(TetrisNextCanvas);
 
-            this.TetrisNextCanvas = document.getElementById("TetrisNextCanvas");		// canvas stuff
-            this.TetrisNextCtx = this.TetrisNextCanvas.getContext("2d");			        // canvas stuff
+            this.TetrisNextCanvas = document.getElementById("TetrisNextCanvas");		// window stuff
+            this.TetrisNextCtx = this.TetrisNextCanvas.getContext("2d");			        // window stuff
 
             this.TetrisNextCtx.strokeStyle = "#ffffff";
             this.TetrisNextCtx.fillStyle = "white";
@@ -171,17 +171,17 @@ class TetrisGame{
 
             let TetrisScoreCanvas = document.createElement('canvas');
             TetrisScoreCanvas.id = 'TetrisScoreCanvas';
-            TetrisScoreCanvas.width = canvas.width / 8;
-            TetrisScoreCanvas.height = (canvas.height / 6) * 4.5;
-            TetrisScoreCanvas.style.left = canvas.width / 8;
-            TetrisScoreCanvas.style.top = (canvas.height / 6) * 0.5;
+            TetrisScoreCanvas.width = window.width / 8;
+            TetrisScoreCanvas.height = (window.height / 6) * 4.5;
+            TetrisScoreCanvas.style.left = window.width / 8;
+            TetrisScoreCanvas.style.top = (window.height / 6) * 0.5;
             TetrisScoreCanvas.style.zIndex = 1;
             TetrisScoreCanvas.style.position = "absolute";
             TetrisScoreCanvas.style.cursor = "none";
             document.body.appendChild(TetrisScoreCanvas);
 
-            this.TetrisScoreCanvas = document.getElementById("TetrisScoreCanvas");		// canvas stuff
-            this.TetrisScoreCtx = this.TetrisScoreCanvas.getContext("2d");			        // canvas stuff
+            this.TetrisScoreCanvas = document.getElementById("TetrisScoreCanvas");		// window stuff
+            this.TetrisScoreCtx = this.TetrisScoreCanvas.getContext("2d");			        // window stuff
 
             this.TetrisScoreCtx.strokeStyle = "#ffffff";
             this.TetrisScoreCtx.fillStyle = "white";
