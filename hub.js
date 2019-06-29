@@ -6,6 +6,9 @@ class HubInterface{
         this._current_page = 0;
         this.in_tranzit = false;
 
+        interfaces.hub.active = true;
+        interfaces.hub.object = this;
+
         this.createCanvases();
         
         for(let p = 0; p < Math.ceil(games.length / 6); p++){
@@ -41,9 +44,6 @@ class HubInterface{
                 ));
             }
         }
-
-        interfaces.hub.active = true;
-        interfaces.hub.object = this;
 
         move._right.setEventListener(()=>{
             if((this.current_button == 2 || this.current_button == 5) && !this.in_tranzit){
@@ -89,9 +89,22 @@ class HubInterface{
             }
         });
 
+        this.interval = new Interval(()=>{
+            if(map[13] || gmap[0].ButtonA){
+                loadingBar(this.page[this.current_page].buttons[this.current_button].text, this.page[this.current_page].buttons[this.current_button].game)
+            }
+        });
+
         this.update();
     }
 
+    exit(){
+        interfaces.hub.object = {};
+        interfaces.hub.active = false;
+        this.interval.stop()
+    }
+
+    // change the current page upon vallue change
     set current_page(value){
         value = value - this._current_page;
 
@@ -99,7 +112,7 @@ class HubInterface{
 
         var self = this;
         var distance = self.canvas.width;
-        this.interval = new Interval(function(){
+        this.cp_interval = new Interval(function(){
             if(distance > 0){
                 distance -= 20;
                 for(let p = 0; p < self.page.length; p++){
@@ -108,7 +121,7 @@ class HubInterface{
                 self.update();
             } else{
                 self.in_tranzit = false;
-                self.interval.stop();
+                self.cp_interval.stop();
                 self.update();
             }
         }); 
@@ -130,6 +143,10 @@ class HubInterface{
                 }
             } 
         }
+
+        /////
+        // create the triangles
+        /////
 
         //halfwidthx = half the distance between most left item and left side of the bar under "GAME HUB"
 		var halfwidthx = (this.canvas.width / 10 * 9 - (this.canvas.width / 6 * 2 + (this.canvas.width / 4.0186046511627906976744186046512) * 2)) / 2;
@@ -176,8 +193,8 @@ class HubInterface{
     createCanvases(){
         let HubHeader = document.createElement('canvas');
 		HubHeader.id = 'HubHeader';
-		HubHeader.width = canvas.width;
-		HubHeader.height = canvas.height / 3.2;
+		HubHeader.width =  window.width;
+		HubHeader.height =  window.height / 3.2;
 		HubHeader.style.left = 0;
 		HubHeader.style.position = "absolute";
 		HubHeader.style.cursor = "none";
@@ -188,9 +205,9 @@ class HubInterface{
 
         let HubInterface = document.createElement('canvas');
 		HubInterface.id = 'HubInterface';
-		HubInterface.width = canvas.width;
-		HubInterface.height = Math.ceil(canvas.height - canvas.height / 3.2);
-		HubInterface.style.top = Math.floor(canvas.height / 3.2);
+		HubInterface.width =  window.width;
+		HubInterface.height = Math.ceil( window.height -  window.height / 3.2);
+		HubInterface.style.top = Math.floor( window.height / 3.2);
 		HubInterface.style.left = 0;
 		HubInterface.style.position = "absolute";
 		HubInterface.style.cursor = "none";
@@ -215,7 +232,7 @@ class HubInterface{
     }
 }
 
-function loadingBar(text, callback){
+function loadingBar(text, game){
     if(document.getElementById("loadingBar") != null)
         return console.log("A loading bar is already active")
 
@@ -223,10 +240,13 @@ function loadingBar(text, callback){
     exit_open_interfaces();
     remove_all_canvases();
     
+    currentGame = game;
+
+    // create a element
     let loadingBar = document.createElement('canvas');
     loadingBar.id = 'loadingBar';
-    loadingBar.width = canvas.width;
-    loadingBar.height = canvas.height;
+    loadingBar.width = window.width;
+    loadingBar.height = window.height;
     loadingBar.style.position = "absolute";
     loadingBar.style.cursor = "none";
     document.body.appendChild(loadingBar);
@@ -239,19 +259,19 @@ function loadingBar(text, callback){
 	var timer = new Interval(() => { // timer function for progress bar
 		counter = counter + factor;
 		
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.clearRect(0, 0, window.width, window.height);
 		
 		ctx.font = '48pt Segoe UI';
 		ctx.strokeStyle = "rgb(50, 50, 50)"; 
 		ctx.textAlign = "center";
 		
-		ctx.fillText("Loading " + text + "...", canvas.width / 2, 500 + 24 /* fontHeight / 2*/);
+		ctx.fillText("Loading " + text + "...", window.width / 2, 500 + 24 /* fontHeight / 2*/);
 	
 		ctx.beginPath();
 		ctx.lineWidth = 14;
-		ctx.rect(canvas.width / 4, 600, canvas.width / 2 , 30); 
+		ctx.rect(window.width / 4, 600, window.width / 2 , 30); 
 		ctx.fillStyle = '#fff'; 
-		ctx.fillRect(canvas.width / 4, 600, counter * (canvas.width / 2) / 100, 30);
+		ctx.fillRect(window.width / 4, 600, counter * (window.width / 2) / 100, 30);
 		
 		ctx.stroke();
 		ctx.closePath();
@@ -266,13 +286,18 @@ function loadingBar(text, callback){
 		} else if (counter > 100) {
 			// remove the loading bar
             timer.stop();
-            remove_all_canvases();
 
             // start the given function
-            if(typeof callback === "string")
-                eval(callback);
-            else if(typeof callback === "function")
-			    callback();
+            load(game)
 		};
 	}, 20);
+}
+
+function load(game){
+    exit_open_game();
+    exit_open_interfaces();
+    remove_all_canvases();
+
+    // make sure () only appears once
+    eval(game.replace("()", '') + "()");
 }

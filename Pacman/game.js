@@ -1,4 +1,4 @@
-function PacMan(){
+function Pacman(){
 	new MenuInterface();
 	interfaces.menu.object.buttons = [
 		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
