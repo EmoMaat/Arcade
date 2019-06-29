@@ -23,15 +23,15 @@ function newPacManGame(){
 class PacManGame{
 	constructor(){
 		move.continuous = true;
-		this.window_scale = canvas.height / 1080;
+		this.window_scale = window.height / 1080;
 		this.OverlayIsActiveActivated = false;
-		this.offset = canvas.width / 2 - (900 * canvas.height / 1080) / 2;
+		this.offset = window.width / 2 - (900 * window.height / 1080) / 2;
 
 		// create a canvas containing the options
 		let PacManCanvas = document.createElement('canvas');
 		PacManCanvas.id = 'PacManCanvas';
-		PacManCanvas.width = canvas.width;
-		PacManCanvas.height = canvas.height;			// is set later
+		PacManCanvas.width = window.width;
+		PacManCanvas.height = window.height;			// is set later
 		PacManCanvas.style.left = 0;
 		PacManCanvas.style.bottom = 0;
 		PacManCanvas.style.position = "absolute";
@@ -82,7 +82,7 @@ class PacManGame{
 	}
 	
 	update(){
-		this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+		this.ctx.clearRect(0, 0, window.width, window.height);
 		// if in the overlay
 		if(!interfaces.menu.active){
 			// update the game system

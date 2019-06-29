@@ -1,5 +1,5 @@
 class PacManPlayer{
-    constructor(wall_settings, wall_map, offset, ctx, size = canvas.width / 128 /* = 15*/){
+    constructor(wall_settings, wall_map, offset, ctx, size = window.width / 128 /* = 15*/){
         this.x = 14.5;
         this.y = 24;
         this.speed = 0.1;
