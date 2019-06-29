@@ -14,8 +14,7 @@ function MidnightMotorists(){
 function newMidnightMotoristsGame(){
     exit_open_game();
     exit_open_interfaces();
-    
-    // interfaces.menu.object.backgroundGame.audioMenu.pause();
+    remove_all_canvases();
 	
 	interfaces.game.object = new MidnightMotoristsGame();
 	
