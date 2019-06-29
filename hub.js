@@ -245,8 +245,8 @@ function loadingBar(text, game){
     // create a element
     let loadingBar = document.createElement('canvas');
     loadingBar.id = 'loadingBar';
-    loadingBar.width =  window.width;
-    loadingBar.height =  window.height;
+    loadingBar.width = window.width;
+    loadingBar.height = window.height;
     loadingBar.style.position = "absolute";
     loadingBar.style.cursor = "none";
     document.body.appendChild(loadingBar);
@@ -259,19 +259,19 @@ function loadingBar(text, game){
 	var timer = new Interval(() => { // timer function for progress bar
 		counter = counter + factor;
 		
-		ctx.clearRect(0, 0,  windowwidth,  windowheight);
+		ctx.clearRect(0, 0, window.width, window.height);
 		
 		ctx.font = '48pt Segoe UI';
 		ctx.strokeStyle = "rgb(50, 50, 50)"; 
 		ctx.textAlign = "center";
 		
-		ctx.fillText("Loading " + text + "...",  windowwidth / 2, 500 + 24 /* fontHeight / 2*/);
+		ctx.fillText("Loading " + text + "...", window.width / 2, 500 + 24 /* fontHeight / 2*/);
 	
 		ctx.beginPath();
 		ctx.lineWidth = 14;
-		ctx.rect( windowwidth / 4, 600,  windowwidth / 2 , 30); 
+		ctx.rect(window.width / 4, 600, window.width / 2 , 30); 
 		ctx.fillStyle = '#fff'; 
-		ctx.fillRect( windowwidth / 4, 600, counter * ( windowwidth / 2) / 100, 30);
+		ctx.fillRect(window.width / 4, 600, counter * (window.width / 2) / 100, 30);
 		
 		ctx.stroke();
 		ctx.closePath();
