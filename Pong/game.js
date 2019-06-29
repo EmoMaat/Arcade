@@ -37,7 +37,7 @@ function newPongGame(player1, player2){
 
 class PongGame{
     constructor(Player1, Player2){
-        this.window_scale = canvas.height / 1080;
+        this.window_scale = window.height / 1080;
         this.initCanvases();
 
         this.players = [];
@@ -107,8 +107,8 @@ class PongGame{
     initCanvases(){
         let playground = document.createElement('canvas');
         playground.id = 'playground';
-        playground.width = canvas.width;
-        playground.height = canvas.height;
+        playground.width = window.width;
+        playground.height = window.height;
         playground.style.position = "absolute";
         playground.style.cursor = "none";
         playground.style.zIndex = 1;
@@ -121,7 +121,7 @@ class PongGame{
         Player1.id = 'Player1';
         Player1.width = 20 * this.window_scale;
         Player1.height = 180 * this.window_scale;
-        Player1.style.top = canvas.height / 2 - Player1.height / 2;
+        Player1.style.top = window.height / 2 - Player1.height / 2;
         Player1.style.left = 30 * this.window_scale;
         Player1.style.position = "absolute";
         Player1.style.cursor = "none";
@@ -134,7 +134,7 @@ class PongGame{
         Player2.id = 'Player2';
         Player2.width = 20 * this.window_scale;
         Player2.height = 180 * this.window_scale;
-        Player2.style.top = canvas.height / 2 - Player2.height / 2;
+        Player2.style.top = window.height / 2 - Player2.height / 2;
         Player2.style.left = 1860 * this.window_scale;
         Player2.style.position = "absolute";
         Player2.style.cursor = "none";
@@ -147,8 +147,8 @@ class PongGame{
         Ball.id = 'Ball';
         Ball.width = 50 * this.window_scale;
         Ball.height = 50 * this.window_scale;
-        Ball.style.top = canvas.height / 2 - Ball.height / 2;
-        Ball.style.left = canvas.width / 2 - Ball.width / 2;
+        Ball.style.top = window.height / 2 - Ball.height / 2;
+        Ball.style.left = window.width / 2 - Ball.width / 2;
         Ball.style.position = "absolute";
         Ball.style.cursor = "none";
         Ball.style.zIndex = 1;
@@ -236,14 +236,14 @@ class PongGame{
 
     // resets the players to the center and spawns a new ball;
     ResetPlayground(){
-        this.players[0].canvas.style.top = this.players[0].y = canvas.height / 2 - this.players[0].canvas.offsetHeight / 2;
-        this.players[1].canvas.style.top = this.players[1].y = canvas.height / 2 - this.players[1].canvas.offsetHeight / 2;
+        this.players[0].canvas.style.top = this.players[0].y = window.height / 2 - this.players[0].canvas.offsetHeight / 2;
+        this.players[1].canvas.style.top = this.players[1].y = window.height / 2 - this.players[1].canvas.offsetHeight / 2;
 
         this.players[0].hitpoint = null;
         this.players[1].hitpoint = null;
         
-        this.BallCanvas.style.top = canvas.height / 2 - this.BallCanvas.offsetHeight / 2;
-        this.BallCanvas.style.left = canvas.width / 2 - this.BallCanvas.offsetWidth / 2;
+        this.BallCanvas.style.top = window.height / 2 - this.BallCanvas.offsetHeight / 2;
+        this.BallCanvas.style.left = window.width / 2 - this.BallCanvas.offsetWidth / 2;
         this.ball = new PongBall(this.BallCanvas);
         this.ball.draw();
     }
