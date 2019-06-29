@@ -131,8 +131,8 @@ class TetrisGame{
         TetrisGameCanvas.id = 'TetrisGameCanvas';
         TetrisGameCanvas.width = this.gridcollums * this.blockSize + 4;
         TetrisGameCanvas.height = this.gridrows * this.blockSize + 4;
-        TetrisGameCanvas.style.left = (canvas.width / 2) - TetrisGameCanvas.width / 2;
-        TetrisGameCanvas.style.top = (canvas.height / 6) * 0.5;
+        TetrisGameCanvas.style.left = (window.width / 2) - TetrisGameCanvas.width / 2;
+        TetrisGameCanvas.style.top = (window.height / 6) * 0.5;
         TetrisGameCanvas.style.zIndex = 1;
         TetrisGameCanvas.style.position = "absolute";
         TetrisGameCanvas.style.cursor = "none";
