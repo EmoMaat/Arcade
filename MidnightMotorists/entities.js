@@ -29,12 +29,12 @@ class MidnightMotoristsPlayer{
 
     update(){
         // middle line pushing
-        if(this.y > canvas.height / 2 - this.width / 3 && this.y < canvas.height / 2){
+        if(this.y > window.height / 2 - this.width / 3 && this.y < window.height / 2){
             this.linetimer++;
             if(this.linetimer > 20){
                 this.y--;
             }
-        } else if(this.y >= canvas.height / 2 && this.y < canvas.height / 2 + this.width / 3){
+        } else if(this.y >= window.height / 2 && this.y < window.height / 2 + this.width / 3){
             this.linetimer++;
             if(this.linetimer > 20){
                 this.y++;
@@ -60,12 +60,12 @@ class MidnightMotoristsPlayer{
                 }
             }
             if(move.left){
-                if(this.x >= canvas.width / 64){
+                if(this.x >= window.width / 64){
                     this.x -= this.speed;
                 }
             }
             if(move.right){
-                if(this.x <= canvas.width - this.width - (canvas.width / 64)){
+                if(this.x <= window.width - this.width - (window.width / 64)){
                     this.x += this.speed;
                 }
             }
