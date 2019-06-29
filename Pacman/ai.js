@@ -360,7 +360,7 @@ class PacManAI_Shell{
 		this.ID = ghostID;	
 		this.pathColor = this.pathGenerator.GhostBeaviour.pathColor;
 		this.back = 3; 							// up = 0, right = 1, down = 2, left = 3 
-		this.radius = canvas.width / 128;		// = 15
+		this.radius = window.width / 128;		// = 15
 		this.ctx = ctx;
 
 		this.wall_settings = wall_settings;

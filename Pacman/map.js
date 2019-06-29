@@ -10,7 +10,7 @@ class PacManMap{
 		};
 
 		this.settings = {
-			offset_x: canvas.width / 2 - (900 * window_scale) / 2,
+			offset_x: window.width / 2 - (900 * window_scale) / 2,
 			offset_y: 0,
 
 			size: 30 * window_scale, 	// = 28
@@ -26,7 +26,7 @@ class PacManMap{
 
 			eatable: {
 				color:"white", 				// either HEX or color name
-				size: canvas.width / 960	// = 2, size in px
+				size: window.width / 960	// = 2, size in px
 			},
 			
 			debug:{
@@ -41,8 +41,8 @@ class PacManMap{
 		// create a canvas containing the options
 		let PacManMap = document.createElement('canvas');
 		PacManMap.id = 'PacManMap';
-		PacManMap.width = canvas.width;
-		PacManMap.height = canvas.height;
+		PacManMap.width = window.width;
+		PacManMap.height = window.height;
 		PacManMap.style.left = 0;
 		PacManMap.style.bottom = 0;
 		PacManMap.style.position = "absolute";
