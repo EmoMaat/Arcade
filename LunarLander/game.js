@@ -27,6 +27,9 @@ function LunarLanderGameSelectorOverlay(){
 function newLunarLanderGame(difficulty){
     exit_open_game();
     exit_open_interfaces();
+
+    this.collision_chance = 0;//300;   // actually an interval, so its starting point will be high
+    this.collision_timer = 0;
 	
 	interfaces.game.object = new LunarLanderGame();
 	
@@ -38,32 +41,46 @@ function newLunarLanderGame(difficulty){
 class LunarLanderGame{
     constructor(){
         this.initCanvases();
+        move.continuous = true;
 
-        this.map = new LunarLanderMap();
+        this.map = new LunarLanderMap(this.mapCanvas);
+        this.player = new LunarLanderPlayer();
 
-        this.ctx.strokeStyle = "#fff";
-        this.ctx.beginPath();
-        this.ctx.moveTo(0,0);
-        this.ctx.lineTo(10, 10);
+        this.map.render();
 
-        // for(let v = 1; v < this.map.length; v++)
-            // this.ctx.lineTo(this.map[v].x, this.map[v].y);
-        this.ctx.stroke(); 
     }
 
-    update(){}
+    update(){
+        this.player.update();
+
+        // if(this.player.updateZoomHitbox){
+            this.map.focus(this.player.hitbox);
+            // this.player.updateZoomHitbox = false;
+        // }
+
+    }
+
+    fakeZoom(){
+        this.map.focus(this.player.hitbox);
+    }
+
+    /**
+     * This function generates a collision chance, minimizing collision checking
+     */
+    collision(){
+        this.map.focus(this.player.hitbox)
+    }
 
     initCanvases(){
-        let playground = document.createElement('canvas');
-        playground.id = 'playground';
-        playground.width = window.width;
-        playground.height = window.height;
-        playground.style.position = "absolute";
-        playground.style.cursor = "none";
-        playground.style.zIndex = 1;
-        document.body.appendChild(playground);
+        let map = document.createElement('canvas');
+        map.id = 'map';
+        map.width = window.width * 2;
+        map.height = window.height;
+        map.style.position = "absolute";
+        map.style.cursor = "none";
+        map.style.zIndex = 1;
+        document.body.appendChild(map);
 
-        this.canvas = document.getElementById("playground");		// canvas stuff
-        this.ctx = this.canvas.getContext("2d");
+        this.mapCanvas = document.getElementById("map");		// canvas stuff
     }
 }
