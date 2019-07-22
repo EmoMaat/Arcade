@@ -11,12 +11,14 @@ class LunarLanderMap{
             "5x":[]
         }
         this.zoom = {
-            current:1,
-            max:1.25,
-            min:1,
-            step:0.05,
-            hitbox_ishidden:false,
-            hitbox_size:200 * window.scale
+            current:null,  
+            min:null,
+            max:5,       // the zoom can only be 2x the original. This value will be overwritten with an absolute value
+            strength:1.01,  // the speed of the zoom
+            
+            in_area: 200,
+            out_area:400,
+            hidden:false,
         }
 
         this.WIDHT = this.canvas.width;
@@ -36,6 +38,10 @@ class LunarLanderMap{
         this.SPAWN_2X_CHANCE = 0.3;
 
         this.generate();
+
+        // set the min, current and max
+        this.zoom.min = this.zoom.current = Math.abs(this.terrain[2].x - this.terrain[1].x);
+        this.zoom.max = this.zoom.min * this.zoom.max;
 
         this.ctx.fillStyle = "grey";
     }
@@ -165,42 +171,90 @@ class LunarLanderMap{
     }
     
     /**
-     * 
+     * tries to adjust the focus on the player taking in consideration the closeness to the terrain
      * @param {Object} hitbox contains a hitbox around which will be zoomed
      */
     focus(hitbox){
+        // check the hitbox for zooming in for any collisions
         if(this.collides(
             [{
-                x:hitbox[0].x - this.zoom.hitbox_size / 2 + (hitbox[1].x - hitbox[0].x) / 2, 
-                y:hitbox[0].y - this.zoom.hitbox_size / 2 + (hitbox[2].y - hitbox[0].y) / 2, 
+                x:hitbox[0].x - this.zoom.in_area / 2 + (hitbox[1].x - hitbox[0].x) / 2,
+                y:hitbox[0].y - this.zoom.in_area / 2 + (hitbox[2].y - hitbox[0].y) / 2
             }, {
-                x:hitbox[0].x - this.zoom.hitbox_size / 2 + (hitbox[1].x - hitbox[0].x) / 2, 
-                y:this.zoom.hitbox_size + hitbox[0].y - this.zoom.hitbox_size / 2 + (hitbox[2].y - hitbox[0].y) / 2
+                x:hitbox[0].x + this.zoom.in_area / 2 + (hitbox[1].x - hitbox[0].x) / 2,
+                y:hitbox[0].y - this.zoom.in_area / 2 + (hitbox[2].y - hitbox[0].y) / 2
             },{
-                x:this.zoom.hitbox_size + hitbox[0].x - this.zoom.hitbox_size / 2 + (hitbox[1].x - hitbox[0].x) / 2,
-                y:hitbox[0].y - this.zoom.hitbox_size / 2 + (hitbox[2].y - hitbox[0].y) / 2, 
+                x:hitbox[0].x - this.zoom.in_area / 2 + (hitbox[1].x - hitbox[0].x) / 2,
+                y:hitbox[0].y + this.zoom.in_area / 2 + (hitbox[2].y - hitbox[0].y) / 2
             },{
-                x:this.zoom.hitbox_size + hitbox[0].x - this.zoom.hitbox_size / 2 + (hitbox[1].x - hitbox[0].x) / 2,
-                y:this.zoom.hitbox_size + hitbox[0].y - this.zoom.hitbox_size / 2 + (hitbox[2].y - hitbox[0].y) / 2
+                x:hitbox[0].x + this.zoom.in_area / 2 + (hitbox[1].x - hitbox[0].x) / 2,
+                y:hitbox[0].y + this.zoom.in_area / 2 + (hitbox[2].y - hitbox[0].y) / 2
             }]
         )){
-            console.log(this.zoom.current)
-            if(this.zoom.current > this.zoom.max)
-                return;
+            if(this.zoom.current < this.zoom.max){
+                // first calculate the difference between the player position before and after the zoom
+                let offsetX = (hitbox[0].x * this.zoom.strength + (hitbox[1].x * this.zoom.strength - hitbox[0].x * this.zoom.strength) / 2)
+                            - (hitbox[0].x + (hitbox[1].x - hitbox[0].x) / 2);
+                let offsetY = (hitbox[0].y * this.zoom.strength + (hitbox[1].y * this.zoom.strength - hitbox[0].y * this.zoom.strength) / 2)
+                            - (hitbox[0].y + (hitbox[1].y - hitbox[0].y) / 2);
 
-            this.zoom.current += this.zoom.step;
+                // zoom the player
+                for(let v = 0; v < hitbox.length; v++){
+                    hitbox[v].x = hitbox[v].x * this.zoom.strength - offsetX;
+                    hitbox[v].y = hitbox[v].y * this.zoom.strength - offsetY * 1.5;
+                }
 
-            for(let v = 0; v < hitbox.length; v++){
-                hitbox[v].x += (hitbox[v].x * this.zoom.current - hitbox[v].x) / 2;
-                hitbox[v].y += -(hitbox[v].y * this.zoom.current - hitbox[v].y);
+                // zoom the terrain (this one must loop backwards)
+                for(let v = this.terrain.length - 1; 0 < v ; v--){
+                    this.terrain[v].x = this.terrain[v].x * this.zoom.strength - offsetX;
+                    this.terrain[v].y = this.terrain[v].y * this.zoom.strength - offsetY * 1.5;
+                }
+
+                // calculate the current zoom
+                this.zoom.current = Math.abs(this.terrain[2].x - this.terrain[1].x);
             }
+        } 
+        
+        // if no collisions, check the hitbox for zooming out for any collisions
+        if(!this.collides(
+            [{
+                x:hitbox[0].x - this.zoom.out_area / 2 + (hitbox[1].x - hitbox[0].x) / 2,
+                y:hitbox[0].y - this.zoom.out_area / 2 + (hitbox[2].y - hitbox[0].y) / 2
+            }, {
+                x:hitbox[0].x + this.zoom.out_area / 2 + (hitbox[1].x - hitbox[0].x) / 2,
+                y:hitbox[0].y - this.zoom.out_area / 2 + (hitbox[2].y - hitbox[0].y) / 2
+            },{
+                x:hitbox[0].x - this.zoom.out_area / 2 + (hitbox[1].x - hitbox[0].x) / 2,
+                y:hitbox[0].y + this.zoom.out_area / 2 + (hitbox[2].y - hitbox[0].y) / 2
+            },{
+                x:hitbox[0].x + this.zoom.out_area / 2 + (hitbox[1].x - hitbox[0].x) / 2,
+                y:hitbox[0].y + this.zoom.out_area / 2 + (hitbox[2].y - hitbox[0].y) / 2
+            }]
+        )){
+            if(this.zoom.current > this.zoom.min){
+                // first calculate the difference between the player position before and after the zoom
+                let offsetX = (hitbox[0].x * this.zoom.strength + (hitbox[1].x * this.zoom.strength - hitbox[0].x * this.zoom.strength) / 2)
+                            - (hitbox[0].x + (hitbox[1].x - hitbox[0].x) / 2);
+                let offsetY = (hitbox[0].y * this.zoom.strength + (hitbox[1].y * this.zoom.strength - hitbox[0].y * this.zoom.strength) / 2)
+                            - (hitbox[0].y + (hitbox[1].y - hitbox[0].y) / 2);
 
-            for(let v = this.terrain.length - 1; 0 < v ; v--){
-                this.terrain[v].x += (this.terrain[v].x * this.zoom.current - this.terrain[v].x) / 2;
-                this.terrain[v].y += -(this.terrain[v].y * this.zoom.current - this.terrain[v].y) / 2;
+                // zoom the player
+                for(let v = 0; v < hitbox.length; v++){
+                    hitbox[v].x = hitbox[v].x / this.zoom.strength + offsetX;
+                    hitbox[v].y = hitbox[v].y / this.zoom.strength + offsetY * 1.5;
+                }
+
+                // zoom the terrain (this one must loop backwards)
+                for(let v = this.terrain.length - 1; 0 < v ; v--){
+                    this.terrain[v].x = this.terrain[v].x / this.zoom.strength + offsetX;
+                    this.terrain[v].y = this.terrain[v].y / this.zoom.strength + offsetY * 1.5;
+                }
+
+                // calculate the current zoom
+                this.zoom.current = Math.abs(this.terrain[2].x - this.terrain[1].x);
+
             }
-        } else
-            this.ctx.fillStyle = "grey";    
+        }
 
         this.render(hitbox);
     }
@@ -208,13 +262,20 @@ class LunarLanderMap{
     render(hitbox){
         this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
 
-        if(!this.zoom.hitbox_ishidden && typeof hitbox !== "undefined"){
+        if(!this.zoom.hidden && typeof hitbox !== "undefined"){
+            this.ctx.globalAlpha = 0.7;
+            this.ctx.fillRect(
+                hitbox[0].x - this.zoom.in_area / 2 + (hitbox[1].x - hitbox[0].x) / 2,
+                hitbox[0].y - this.zoom.in_area / 2 + (hitbox[2].y - hitbox[0].y) / 2, 
+                this.zoom.in_area,
+                this.zoom.in_area
+            );
             this.ctx.globalAlpha = 0.5;
             this.ctx.fillRect(
-                hitbox[0].x - this.zoom.hitbox_size / 2 + (hitbox[1].x - hitbox[0].x) / 2, 
-                hitbox[0].y - this.zoom.hitbox_size / 2 + (hitbox[2].y - hitbox[0].y) / 2, 
-                this.zoom.hitbox_size,
-                this.zoom.hitbox_size
+                hitbox[0].x - this.zoom.out_area / 2 + (hitbox[1].x - hitbox[0].x) / 2, 
+                hitbox[0].y - this.zoom.out_area / 2 + (hitbox[2].y - hitbox[0].y) / 2, 
+                this.zoom.out_area,
+                this.zoom.out_area
             );
         }
 
@@ -229,7 +290,6 @@ class LunarLanderMap{
 
         for(let landingtype in this.landingspot){
             for(let spot = 0; spot < this.landingspot[landingtype].length; spot++){
-                this.ctx.fillStyle = "white";
                 this.ctx.font = "20px segoe ui";
                 this.ctx.fillText(landingtype,this.terrain[this.landingspot[landingtype][spot].p1].x, 30);
             }
@@ -258,6 +318,9 @@ class LunarLanderMap{
 
             for(let vectors = this.get_nearest_terrain_index(P1.x) - 1; vectors < this.get_nearest_terrain_index(P2.x) + 1; vectors++){
                 // get the coordinates of a line of the terrain
+                if(typeof this.terrain[vectors] === "undefined" && typeof this.terrain[vectors + 1] === "undefined")
+                    break;
+
                 let T1 = {x:this.terrain[vectors].x, y:this.terrain[vectors].y};
                 let T2 = {x:this.terrain[vectors + 1].x, y:this.terrain[vectors + 1].y};
 
