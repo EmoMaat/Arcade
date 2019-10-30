@@ -12,10 +12,10 @@ function Tetris(){
 function newTetrisGame(){
     exit_open_game();
     exit_open_interfaces();
-	
+
 	interfaces.game.object = new TetrisGame();
-	
-	interfaces.game.interval = new Interval(function(){ 
+
+	interfaces.game.interval = new Interval(function(){
 		interfaces.game.object.update();
 	}, 15);
 }
@@ -37,7 +37,7 @@ class TetrisGame{
 
         this.player = new TetrisPlayer();
         this.player.position.x = Math.ceil(this.grid[0].length / 2) - 1;
-        
+
         // timers (60 = 1 second)
         this.dropTimer = 0;
         this.dropInterval = 60;
@@ -118,7 +118,7 @@ class TetrisGame{
                 this.ctx.strokeStyle = "black";
                 this.ctx.strokeText("GAME OVER", this.canvas.width / 2, this.canvas.height / 3);
                 this.ctx.fillText("GAME OVER", this.canvas.width / 2, this.canvas.height / 3);
-            } 
+            }
             if(this.gameoverTimer <= 0) {
                 new HighScoresInterface(currentGame, this.player.score);
             }
@@ -140,13 +140,13 @@ class TetrisGame{
 
         this.canvas = document.getElementById("TetrisGameCanvas");		// window stuff
         this.ctx = this.canvas.getContext("2d");			        // window stuff
-        
+
         this.ctx.strokeStyle = "#ffffff";
         this.ctx.fillStyle = "white";
         this.ctx.lineWidth = 4;
         this.ctx.textAlign = "center";
 		this.ctx.font = "100px segoe ui";
-		
+
         if(!interfaces.menu.active){
             let TetrisNextCanvas = document.createElement('canvas');
             TetrisNextCanvas.id = 'TetrisNextCanvas';
@@ -196,7 +196,7 @@ class TetrisGame{
         this.TetrisScoreCtx.clearRect(0, 0, this.TetrisScoreCanvas.width, this.TetrisScoreCanvas.height);
 
 		this.TetrisScoreCtx.fillText("SCORE",this.TetrisScoreCanvas.width / 2, this.TetrisScoreCanvas.height * 0.1);
-		
+
 		this.TetrisScoreCtx.beginPath();
 		this.TetrisScoreCtx.moveTo(this.TetrisScoreCanvas.width - this.TetrisScoreCanvas.width * 0.9, this.TetrisScoreCanvas.height * 0.15);
 		this.TetrisScoreCtx.lineTo(this.TetrisScoreCanvas.width * 0.9, this.TetrisScoreCanvas.height * 0.15);
@@ -206,20 +206,20 @@ class TetrisGame{
 
 
 		this.TetrisScoreCtx.fillText("COMBO",this.TetrisScoreCanvas.width / 2, this.TetrisScoreCanvas.height * 0.4);
-		
+
 		this.TetrisScoreCtx.beginPath();
 		this.TetrisScoreCtx.moveTo(this.TetrisScoreCanvas.width - this.TetrisScoreCanvas.width * 0.9, this.TetrisScoreCanvas.height * 0.45);
         this.TetrisScoreCtx.lineTo(this.TetrisScoreCanvas.width * 0.9, this.TetrisScoreCanvas.height * 0.45);
-        
+
         this.TetrisScoreCtx.fillText(this.player.combo,this.TetrisScoreCanvas.width / 2, this.TetrisScoreCanvas.height * 0.55);
         this.TetrisScoreCtx.stroke();
     }
 
     // draws the queue
-    UpdateQueueCanvas(){    
+    UpdateQueueCanvas(){
         this.TetrisNextCtx.clearRect(0, 0, this.TetrisNextCanvas.width, this.TetrisNextCanvas.height);
 		this.TetrisNextCtx.fillText("NEXT",this.TetrisNextCanvas.width / 2, this.TetrisNextCanvas.height * 0.1);
-		
+
 		this.TetrisNextCtx.beginPath();
 		this.TetrisNextCtx.moveTo(this.TetrisNextCanvas.width - this.TetrisNextCanvas.width * 0.9, this.TetrisNextCanvas.height * 0.145);
 		this.TetrisNextCtx.lineTo(this.TetrisNextCanvas.width * 0.9, this.TetrisNextCanvas.height * 0.145);
@@ -287,14 +287,14 @@ class TetrisGame{
             for(let x = 0; x < this.player.matrix[y].length; x++){
                 if(this.player.matrix[y][x] !== 0 &&         // are we checking a non block player matrix entity?
                   (this.grid[y + this.player.position.y] &&     // does the row we are on exist?
-                   this.grid[y + this.player.position.y][x + this.player.position.x]) !== 0){   // are we on a tile which is already occupied? 
+                   this.grid[y + this.player.position.y][x + this.player.position.x]) !== 0){   // are we on a tile which is already occupied?
                     return true;
                 }
-            }            
+            }
         }
         return false;
     }
-    
+
     MergeMatrixWithGrid(){
         // merge the location of the player matrix in the grid
         // move 1 position back as the merge will come after a move
@@ -325,7 +325,7 @@ class TetrisGame{
             }
             if(non_filled_row)
                 continue;
-                
+
             // the whole row was filled! Remove the row and add a new one to the top
             this.grid.splice(r,1);
             this.grid.unshift(new Array(this.gridcollums).fill(0));
@@ -359,10 +359,10 @@ class TetrisGame{
                         break;
                 }
             }
-        } else 
+        } else
             this.player.combo = 0;
     }
-            
+
     // every 60th execution the player y position will move 1 down
     updateCurrentMatrixPosition(){
         this.dropTimer++;
