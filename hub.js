@@ -10,7 +10,7 @@ class HubInterface{
         interfaces.hub.object = this;
 
         this.createCanvases();
-        
+
         for(let p = 0; p < Math.ceil(games.length / 6); p++){
             this.page[p] = {
                 _x: (this.canvas.width / 2) * (p + 1),  // always middle of the screen (centered)
@@ -23,7 +23,7 @@ class HubInterface{
 
                     for(let b = 0; b < this.buttons.length; b++)
                         this.buttons[b].x += value;
-					
+
 				}, get x(){ return this._x; },
             };
 
@@ -36,10 +36,10 @@ class HubInterface{
                 let placement_y = b < 3 ? this.canvas.height / 25: this.canvas.height / 2;
 
                 this.page[p].buttons.push(new HubButton(
-                    placement_x + this.canvas.width * p, 
-                    placement_y, 
-                    games[p * 6 + b], 
-                    games[p * 6 + b].replace(/\s/g, ''), 
+                    placement_x + this.canvas.width * p,
+                    placement_y,
+                    games[p * 6 + b],
+                    games[p * 6 + b].replace(/\s/g, ''),
                     this.ctx
                 ));
             }
@@ -49,7 +49,7 @@ class HubInterface{
             if((this.current_button == 2 || this.current_button == 5) && !this.in_tranzit){
                 if(this.current_page + 1 < this.page.length)
                     // if on the next page there are not enough buttons to switch from the bottom lane to the next,
-                    // select the top button 
+                    // select the top button
                     if(this.page[this.current_page + 1].buttons.length > 2){
                         this.current_page += 1;
                         // if this.current_button != 2, it is 5
@@ -124,7 +124,7 @@ class HubInterface{
                 self.cp_interval.stop();
                 self.update();
             }
-        }); 
+        });
 
         this._current_page += value;
     }
@@ -141,7 +141,7 @@ class HubInterface{
                     this.page[p].buttons[b].selected = false;
                     this.page[p].buttons[b].update();
                 }
-            } 
+            }
         }
 
         /////
@@ -152,22 +152,22 @@ class HubInterface{
 		var halfwidthx = (this.canvas.width / 10 * 9 - (this.canvas.width / 6 * 2 + (this.canvas.width / 4.0186046511627906976744186046512) * 2)) / 2;
 		//halfwidthy = half the distance between the middle and an item
 		var halfwidthy = this.canvas.height / 2 - (this.canvas.height / 4 + this.canvas.height / 8.5);
-		
+
 		// check if we should make arrows pointing up or down
-		if(this.current_page - 1 >= 0 && !this.in_tranzit){			
+		if(this.current_page - 1 >= 0 && !this.in_tranzit){
 			var x1 = this.canvas.width / 10 - (halfwidthx * 1.3);
 			var x2 = this.canvas.width / 10;
 			var x3 = this.canvas.width / 10;
-			
+
 			var y1 = this.canvas.height / 1.55 - halfwidthy * 2;
 			var y2 = this.canvas.height / 1.55 - halfwidthy * 1.45;
 			var y3 = this.canvas.height / 1.55 - halfwidthy * 1.25 - (halfwidthy * 1.25);
-			
+
 			this.ctx.beginPath();
 			this.ctx.moveTo(x1, y1);
 			this.ctx.lineTo(x2, y2);
 			this.ctx.lineTo(x3, y3);
-			
+
 			this.ctx.fillStyle = "#fff";
 			this.ctx.fill();
 		}
@@ -175,16 +175,16 @@ class HubInterface{
 			var x1 = this.canvas.width / 10 * 9 + (halfwidthx * 1.3);
 			var x2 = this.canvas.width / 10 * 9;
 			var x3 = this.canvas.width / 10 * 9;
-			
+
 			var y1 = this.canvas.height / 1.55 - halfwidthy * 2;
 			var y2 = this.canvas.height / 1.55 - halfwidthy * 1.45;
 			var y3 = this.canvas.height / 1.55 - halfwidthy * 1.25 - (halfwidthy * 1.25);
-			
+
 			this.ctx.beginPath();
 			this.ctx.moveTo(x1, y1);
 			this.ctx.lineTo(x2, y2);
 			this.ctx.lineTo(x3, y3);
-			
+
 			this.ctx.fillStyle = "#fff";
 			this.ctx.fill();
 		}
@@ -221,7 +221,7 @@ class HubInterface{
 		this.HubHeaderCtx.font = "100px segoe ui";
 		this.HubHeaderCtx.textAlign = "center";
 		this.HubHeaderCtx.fillText("GAME HUB",this.HubHeaderCanvas.width/2,this.HubHeaderCanvas.height/1.75 - 40);
-		
+
 		this.HubHeaderCtx.beginPath();
 		this.HubHeaderCtx.strokeStyle = "#fff";
 		this.HubHeaderCtx.moveTo(this.HubHeaderCanvas.width/10,this.HubHeaderCanvas.height/1.5);
@@ -239,7 +239,7 @@ function loadingBar(text, game){
     exit_open_game();
     exit_open_interfaces();
     remove_all_canvases();
-    
+
     currentGame = game;
 
     // create a element
@@ -258,24 +258,24 @@ function loadingBar(text, game){
     var counter = 0, factor = 1;
 	var timer = new Interval(() => { // timer function for progress bar
 		counter = counter + factor;
-		
+
 		ctx.clearRect(0, 0, window.width, window.height);
-		
+
 		ctx.font = '48pt Segoe UI';
-		ctx.strokeStyle = "rgb(50, 50, 50)"; 
+		ctx.strokeStyle = "rgb(50, 50, 50)";
 		ctx.textAlign = "center";
-		
+
 		ctx.fillText("Loading " + text + "...", window.width / 2, 500 + 24 /* fontHeight / 2*/);
-	
+
 		ctx.beginPath();
 		ctx.lineWidth = 14;
-		ctx.rect(window.width / 4, 600, window.width / 2 , 30); 
-		ctx.fillStyle = '#fff'; 
+		ctx.rect(window.width / 4, 600, window.width / 2 , 30);
+		ctx.fillStyle = '#fff';
 		ctx.fillRect(window.width / 4, 600, counter * (window.width / 2) / 100, 30);
-		
+
 		ctx.stroke();
 		ctx.closePath();
-		
+
 		// setting the progressvalue of the bar
 		if (counter >= 10 && counter <= 59) {
 			damping = Math.floor(Math.random() * (300 - 25)) + 6;
