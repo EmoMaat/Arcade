@@ -30,10 +30,10 @@ function newLunarLanderGame(difficulty){
 
     this.collision_chance = 0;//300;   // actually an interval, so its starting point will be high
     this.collision_timer = 0;
-	
+
 	interfaces.game.object = new LunarLanderGame();
-	
-	interfaces.game.interval = new Interval(function(){ 
+
+	interfaces.game.interval = new Interval(function(){
 		interfaces.game.object.update();
 	}, 15);
 }
@@ -43,32 +43,21 @@ class LunarLanderGame{
         this.initCanvases();
         move.continuous = true;
 
-        this.map = new LunarLanderMap(this.mapCanvas);
-        this.player = new LunarLanderPlayer();
+        this.map = new LunarLanderMap(this.canvas);
+        this.player = new LunarLanderPlayer(this.canvas);
 
         this.map.render();
 
     }
 
     update(){
-        this.player.update();
 
         // if(this.player.updateZoomHitbox){
-            this.map.focus(this.player.hitbox);
+            this.map.focus(this.player.processHitbox(), this.player.hitbox);
             // this.player.updateZoomHitbox = false;
         // }
+        this.player.update();
 
-    }
-
-    fakeZoom(){
-        this.map.focus(this.player.hitbox);
-    }
-
-    /**
-     * This function generates a collision chance, minimizing collision checking
-     */
-    collision(){
-        this.map.focus(this.player.hitbox)
     }
 
     initCanvases(){
@@ -81,6 +70,6 @@ class LunarLanderGame{
         map.style.zIndex = 1;
         document.body.appendChild(map);
 
-        this.mapCanvas = document.getElementById("map");		// canvas stuff
+        this.canvas = document.getElementById("map");		// canvas stuff
     }
 }
