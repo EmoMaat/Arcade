@@ -6,8 +6,8 @@ class HubInterface{
         this._current_page = 0;
         this.in_tranzit = false;
 
-        interfaces.hub.active = true;
-        interfaces.hub.object = this;
+        arcade.hub.active = true;
+        arcade.hub.object = this;
 
         this.createCanvases();
 
@@ -83,7 +83,7 @@ class HubInterface{
         });
 
         move._down.setEventListener(()=>{
-            if(this.current_button < 3 && !this.in_tranzit && this.current_button + 3 < this.page[this.current_page].buttons.length - 1){
+            if(this.current_button < 3 && !this.in_tranzit && this.current_button + 3 < this.page[this.current_page].buttons.length){
                 this.current_button +=3;
                 this.update();
             }
@@ -99,8 +99,8 @@ class HubInterface{
     }
 
     exit(){
-        interfaces.hub.object = {};
-        interfaces.hub.active = false;
+        arcade.hub.object = {};
+        arcade.hub.active = false;
         this.interval.stop()
     }
 
@@ -218,7 +218,7 @@ class HubInterface{
 
 		// the title and the line
 		this.HubHeaderCtx.fillStyle = "#fff";
-		this.HubHeaderCtx.font = "100px segoe ui";
+		this.HubHeaderCtx.font = "100px SegoeUI";
 		this.HubHeaderCtx.textAlign = "center";
 		this.HubHeaderCtx.fillText("GAME HUB",this.HubHeaderCanvas.width/2,this.HubHeaderCanvas.height/1.75 - 40);
 
@@ -237,7 +237,7 @@ function loadingBar(text, game){
         return console.log("A loading bar is already active")
 
     exit_open_game();
-    exit_open_interfaces();
+    exit_open_arcade();
     remove_all_canvases();
 
     currentGame = game;
@@ -261,7 +261,7 @@ function loadingBar(text, game){
 
 		ctx.clearRect(0, 0, window.width, window.height);
 
-		ctx.font = '48pt Segoe UI';
+		ctx.font = '48pt SegoeUI';
 		ctx.strokeStyle = "rgb(50, 50, 50)";
 		ctx.textAlign = "center";
 
@@ -295,7 +295,7 @@ function loadingBar(text, game){
 
 function load(game){
     exit_open_game();
-    exit_open_interfaces();
+    exit_open_arcade();
     remove_all_canvases();
 
     // make sure () only appears once
