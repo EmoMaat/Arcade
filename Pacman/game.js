@@ -175,7 +175,7 @@ class PacManGame{
 			this.ctx.drawImage(img, this.map.settings.size * 1.5 * (l + 1), (this.map.size.rows + 2) * this.map.settings.size);
 		}
 
-		this.ctx.font = "30px" + arcade.font;
+		this.ctx.font = "30px " + arcade.font;
 		this.ctx.fillStyle ="white";
 		this.ctx.fillText("POINTS: " + this.points,this.map.settings.size * 10, (this.map.size.rows + 3) * this.map.settings.size);
 	}
