@@ -1,22 +1,22 @@
 function Pacman(){
 	new MenuInterface();
-	interfaces.menu.object.buttons = [
+	arcade.menu.object.buttons = [
 		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
 		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
 		["START GAME", "newPacManGame()"]
 	];
 
-	interfaces.menu.object.backgroundGame = interfaces.game.object = new PacManGame();
+	arcade.menu.object.backgroundGame = arcade.game.object = new PacManGame();
 }
 
 function newPacManGame(){
 	exit_open_game();
-	exit_open_interfaces();
+	exit_open_arcade();
 
-	interfaces.game.object = new PacManGame();
+	arcade.game.object = new PacManGame();
 
-	interfaces.game.interval = new Interval(function(){
-		interfaces.game.object.update();
+	arcade.game.interval = new Interval(function(){
+		arcade.game.object.update();
 	}, 15);
 }
 
@@ -79,14 +79,14 @@ class PacManGame{
 		if(document.getElementById("PacManMap") !== null)
 			document.getElementById("PacManMap").parentElement.removeChild(document.getElementById("PacManMap"))
 
-		interfaces.game.interval.stop();
-		interfaces.game.object = {};
+		arcade.game.interval.stop();
+		arcade.game.object = {};
 	}
 
 	update(){
 		this.ctx.clearRect(0, 0, window.width, window.height);
 		// if in the overlay
-		if(!interfaces.menu.active){
+		if(!arcade.menu.active){
 			// update the game system
 			this.interactionHandler();
 			this.eatablesHandler();

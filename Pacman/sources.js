@@ -8,7 +8,7 @@ var pacmanBgsound= new Audio();
 pacmanReady.addEventListener("ended", function(){
     pacmanReady.currentTime = 0;
     pacmanReady.pause();
-    interfaces.game.object.ready.state = true;
+    arcade.game.object.ready.state = true;
 });
 
 //sources

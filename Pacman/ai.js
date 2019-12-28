@@ -13,7 +13,7 @@ class PacManAI{
 			state: false,
 			deftimer: 600,
 			timer:600,
-			
+
 			defflickertimer:20,
 			flickertimer:20,
 			flickerbool:false
@@ -27,17 +27,17 @@ class PacManAI{
 			container:[1, 2, 3],
 
 			release(ID){
-				if(ID < interfaces.game.object.ai.ghosts.length && this.container.length != 0)
+				if(ID < arcade.game.object.ai.ghosts.length && this.container.length != 0)
 					for(var c = 0; c < this.container.length; c++)
 						if(this.container[c] == ID){
-							interfaces.game.object.ai.ghosts[this.container[c]].leaveGhosthouse();
+							arcade.game.object.ai.ghosts[this.container[c]].leaveGhosthouse();
 							this.container.splice(c, 1);
 						}
 			},
 
 			contain(ID){
-				if(ID < interfaces.game.object.ai.ghosts.length){
-					interfaces.game.object.ai.ghosts[ID].enterGhosthouse();
+				if(ID < arcade.game.object.ai.ghosts.length){
+					arcade.game.object.ai.ghosts[ID].enterGhosthouse();
 					this.container.push(ID);
 				}
 			}
@@ -49,7 +49,7 @@ class PacManAI{
 			current:0,		// mode we are in
 			stage:null,	// stage of the mode we are in, is null as it will be initialized later on
 			timer:0,
-			
+
 			mode:[{
 				level_low:1,	// from which level
 				level_high:1, 	// to which level this applies
@@ -66,13 +66,13 @@ class PacManAI{
 				]
 			},
 			{
-				level_low:2,	
-				level_high:4, 
+				level_low:2,
+				level_high:4,
 
 				stages:[
 					7,
 					20,
-					7,	
+					7,
 					20,
 					5,
 					1033,
@@ -81,18 +81,18 @@ class PacManAI{
 				]
 			},
 			{
-				level_low:5,	
-				level_high:255, 
+				level_low:5,
+				level_high:255,
 
 				stages:[
 					5,
 					20,
 					5,
-					20,	
+					20,
 					5,
-					1037,	
-					1/60,	
-					-1	
+					1037,
+					1/60,
+					-1
 				]
 			}]
 		};
@@ -144,15 +144,15 @@ class PacManAI{
 		};
 		this.eatTable = {
 			current:0,
-			
+
 			died:false,	// whether the player died in the current level
 			counter:0,	// counter if the player died
-			
+
 			mode:[
 				{
 					level_low:1,
 					level_high:1,
-					
+
 					eat_values:[
 						0,			// Blinky
 						0,			// Pinky
@@ -163,7 +163,7 @@ class PacManAI{
 				{
 					level_low:2,
 					level_high:2,
-					
+
 					eat_values:[
 						0,			// Blinky
 						0,			// Pinky
@@ -174,7 +174,7 @@ class PacManAI{
 				{
 					level_low:3,
 					level_high:3,
-					
+
 					eat_values:[
 						0,			// Blinky
 						0,			// Pinky
@@ -190,7 +190,7 @@ class PacManAI{
 				]
 			]
 		}
-		
+
 		this.updateGhostSettings();
 	}
 
@@ -200,10 +200,10 @@ class PacManAI{
 		this.ghosts.push(new PacManAI_Shell(wall_settings, space_map, intersection_map, tunnel, 2, offset, ctx));
 		this.ghosts.push(new PacManAI_Shell(wall_settings, space_map, intersection_map, tunnel, 3, offset, ctx));
 	}
-	
+
 	updateGhostSettings(){
 		for(var i = 0; i < this.ghosts.length; i++){
-			this.ghosts[i].speed.default = Math.round(0.1 * this.speedTable.mode[this.speedTable.current].ghosts.normal * 1000) / 1000; 
+			this.ghosts[i].speed.default = Math.round(0.1 * this.speedTable.mode[this.speedTable.current].ghosts.normal * 1000) / 1000;
 			this.ghosts[i].speed.current = Math.round(0.1 * this.speedTable.mode[this.speedTable.current].ghosts.normal * 1000) / 1000;
 		}
 	}
@@ -229,7 +229,7 @@ class PacManAI{
 				}
 			}
 		}
-		
+
 		// update all ghosts
 		for(var g = 0; g < this.ghosts.length; g++){
 			// if the ghost was already eaten but is caught again, release
@@ -244,23 +244,23 @@ class PacManAI{
 
 	scatterHandler(){
 		// handle the scatter stages
-		if(this.scatterTable.timer == -1) {  // -1 is infinite				
+		if(this.scatterTable.timer == -1) {  // -1 is infinite
 			for(var g = 0; g < this.ghosts.length; g++)
 					if(!this.ghosts[g].eaten && !this.ghosts[g].ghosthouse.inside)
 						this.ghosts[g].scattering = false;
-					
+
 		} else if(this.scatterTable.timer <= 0){ // if a timer is zero a new one should be placed
 			// up the stage for next time
 			if(this.scatterTable.stage == null)
 				this.scatterTable.stage = 0;
 			else if(this.scatterTable.stage + 1 < this.scatterTable.mode[this.scatterTable.current].stages.length)
 				this.scatterTable.stage++;
-		
+
 			// get the time associated with the level and stage
 			this.scatterTable.timer = this.scatterTable.mode[this.scatterTable.current].stages[this.scatterTable.stage]; //seconds
 		} else {
 			this.scatterTable.timer -= 0.05; // update time
-			
+
 			// if the stage is even, scatter
 			if(this.scatterTable.stage % 2 == 0)
 				for(var g = 0; g < this.ghosts.length; g++)
@@ -277,7 +277,7 @@ class PacManAI{
 
 	fleeingHandler(){
 		// flickering of the ghosts
-		if(this.fleeing.state){ // if the ghosts should be in the fleeing state		
+		if(this.fleeing.state){ // if the ghosts should be in the fleeing state
 			if (this.fleeing.timer == 600){ // if we did not touch the timer yet
 				// set all the fleeing states of the ghosts to true
 				for(var i = 0; i < this.ghosts.length; i++)
@@ -285,17 +285,17 @@ class PacManAI{
 						this.ghosts[i].fleeing = true;
 						this.ghosts[i].speed.current *= this.speedTable.mode[this.speedTable.current].ghosts.frightend;
 					}
-				
+
 				// decrease the timer
 				this.fleeing.timer--;
-				
+
 			} else if(this.fleeing.timer > 0 && this.fleeing.timer < this.fleeing.deftimer * 0.3){
 				if(this.fleeing.flickerbool){ // going on
 					this.fleeing.flickertimer--;
 					if (this.fleeing.flickertimer <= 0){
 						this.fleeing.flickertimer = 0;
 						this.fleeing.flickerbool = false;
-						
+
 						for(var i = 0; i < this.ghosts.length; i++){
 							if(!this.ghosts[i].ghosthouse.inside && this.ghosts[i].fleeing){
 								this.ghosts[i]._animate_fleeing = this.fleeing.flickerbool;
@@ -307,19 +307,19 @@ class PacManAI{
 					if (this.fleeing.flickertimer >= this.fleeing.defflickertimer){
 						this.fleeing.flickertimer = this.fleeing.defflickertimer;
 						this.fleeing.flickerbool = true;
-						
+
 						for(var i = 0; i < this.ghosts.length; i++){
 							if(!this.ghosts[i].ghosthouse.inside && this.ghosts[i].fleeing){
 								this.ghosts[i]._animate_fleeing = this.fleeing.flickerbool;
 							}
 						}
 					}
-				}  
+				}
 				this.fleeing.timer--;
 			} else if(this.fleeing.timer <= 0){ // if the timer is run out
 				this.fleeing.timer = this.fleeing.deftimer;
 				this.fleeing.state = false;
-				
+
 				for(var i = 0; i < this.ghosts.length; i++){
 					if(!this.ghosts[i].ghosthouse.inside && this.ghosts[i].fleeing){
 						this.ghosts[i].speed.current = this.ghosts[i].speed.default * this.speedTable.mode[this.speedTable.current].ghosts.normal; // reset the speed to its default
@@ -335,11 +335,11 @@ class PacManAI{
 								console.log("This while loop got probably stuck in an inifinite loop, and the ai has been rebuilt to prevent a timeout")
 								break;
 							}
-							
+
 							this.ghosts[i].move();
 							tries++
 						}
-						
+
 						this.ghosts[i].fleeing = false;
 					}
 				}
@@ -357,9 +357,9 @@ class PacManAI_Shell{
 		// ---- init ----
 		this.offset = offset;
 		this.pathGenerator = new PacManPathGenerator(ghostID);
-		this.ID = ghostID;	
+		this.ID = ghostID;
 		this.pathColor = this.pathGenerator.GhostBeaviour.pathColor;
-		this.back = 3; 							// up = 0, right = 1, down = 2, left = 3 
+		this.back = 3; 							// up = 0, right = 1, down = 2, left = 3
 		this.radius = window.width / 128;		// = 15
 		this.ctx = ctx;
 
@@ -368,7 +368,7 @@ class PacManAI_Shell{
 		this.intersection_map = intersection_map;
 		this.tunnel = tunnel;
 		this.path = [];
-		
+
 		this.debug = false;
 
 		// ---- location ----
@@ -387,7 +387,7 @@ class PacManAI_Shell{
 
 		// ---- targeting ----
 		// only used to see if our path still leads us to pacman
-		this.target = {x: 0, y: 0}; 				
+		this.target = {x: 0, y: 0};
 
 		// ---- states ----
 		// AI eat variables
@@ -397,7 +397,7 @@ class PacManAI_Shell{
 		this._animate_fleeing = false;		// whether the animation of fleeing should be active
 		this._eaten = false;				// whether the AI is eaten
 		this._waseaten = false;				// whether he was eaten before in this session
-		
+
 		this.disablemovement = false;		// disables AI movement
 		this.force_uturn = false;			// forces a u-turn
 		this.scattering = false;			// makes the AI scatter
@@ -433,7 +433,7 @@ class PacManAI_Shell{
 		// if the ghost is in transit
 		if(this.ghosthouse.intransit)
 			this.ghosthouseHandler();
-		
+
 		// else the ghost should update its path
 		else
 			this.generatePath(pacman, ghosts);
@@ -472,7 +472,7 @@ class PacManAI_Shell{
 		// teleporting
 		// target_node must be always one ahead of the AI
 		if(this.x >= 28 && this.y == 15){
-				this.x = 2; this.node.x = 2; this.next_node.x = 3; return false;} 
+				this.x = 2; this.node.x = 2; this.next_node.x = 3; return false;}
 			else if(this.x <= 1 && this.y == 15){
 				this.x = 27; this.node.x = 27; this.next_node.x = 26; return false;}
 		*/
@@ -484,15 +484,15 @@ class PacManAI_Shell{
 		if(this.fleeing){
 			// tunnel teleport part
 			if(this.x >= 28 && this.y == 15){
-				this.x = 2; this.node.x = 2; this.next_node.x = 3; return false;} 
+				this.x = 2; this.node.x = 2; this.next_node.x = 3; return false;}
 			else if(this.x <= 1 && this.y == 15){
 				this.x = 27; this.node.x = 27; this.next_node.x = 26; return false;}
 
 			if(this.back == 3){
 				if(this.x + this.speed.current > this.node.x + 1){
-					this.x = this.node.x + 1; 
+					this.x = this.node.x + 1;
 					this.node.x += 1;
-					
+
 					if(this.force_uturn){
 						this.back = 1;
 						this.force_uturn = false;
@@ -506,38 +506,38 @@ class PacManAI_Shell{
 
 			if(this.back == 1){
 				if(this.x - this.speed.current < this.node.x - 1){
-					this.x = this.node.x -= 1; 
-					
+					this.x = this.node.x -= 1;
+
 					if(this.force_uturn){
 						this.back = 3;
 						this.force_uturn = false;
 					} else
 						this.back = this.randomDir();
 				} else if(this.y == Math.round(this.y)){
-					this.x -= this.speed.current; 
+					this.x -= this.speed.current;
 					this.next_node.x = this.node.x - 1;
 				}
 			}
 
 			if(this.back == 0){
 				if(this.y + this.speed.current > this.node.y + 1){
-					this.y = this.node.y += 1; 
-					
+					this.y = this.node.y += 1;
+
 					if(this.force_uturn){
 						this.back = 2;
 						this.force_uturn = false;
 					} else
 						this.back = this.randomDir();
 				} else if(this.x == Math.round(this.x)){
-					this.y += this.speed.current; 
+					this.y += this.speed.current;
 					this.next_node.y = this.node.y + 1;
 				}
 			}
 
 			if(this.back == 2){
 				if(this.y - this.speed.current < this.node.y - 1){
-					this.y = this.node.y -= 1; 
-					
+					this.y = this.node.y -= 1;
+
 					if(this.force_uturn){
 						this.back = 0;
 						this.force_uturn = false;
@@ -546,7 +546,7 @@ class PacManAI_Shell{
 				} else if(this.x == Math.round(this.x)){
 					this.y -= this.speed.current;
 					this.next_node.y = this.node.y - 1;
-				}	
+				}
 			}
 
 			if(this.x == this.next_node.x || this.y == this.next_node.y){
@@ -569,46 +569,46 @@ class PacManAI_Shell{
 		if(this.path[0] != undefined){
 			if(this.x < this.path[0].x){
 				if(this.x + this.speed.current > this.node.x + 1){
-					this.x = this.path[0].x;  			
+					this.x = this.path[0].x;
 					this.back = 3;
 				} else if(this.y == Math.round(this.y)){
-					this.x += this.speed.current;				
-					this.back = 3;						
+					this.x += this.speed.current;
+					this.back = 3;
 					this.next_node.x = this.node.x + 1;
 				}
 			} else
-			
+
 			if(this.x > this.path[0].x){
 				if(this.x - this.speed.current < this.node.x - 1){
-					this.x = this.path[0].x; 
+					this.x = this.path[0].x;
 					this.back = 1;
 				} else if(this.y == Math.round(this.y)){
-					this.x -= this.speed.current; 
+					this.x -= this.speed.current;
 					this.back = 1;
 					this.next_node.x = this.node.x - 1;
-				}	
+				}
 			} else
 
 			if(this.y < this.path[0].y){
 				if(this.y + this.speed.current > this.node.y + 1){
-					this.y = this.path[0].y; 
-					this.back = 0;	
+					this.y = this.path[0].y;
+					this.back = 0;
 				} else if(this.x == Math.round(this.x)){
-					this.y += this.speed.current; 
+					this.y += this.speed.current;
 					this.back = 0;
 					this.next_node.y = this.node.y + 1;
 				}
 			} else
-			
+
 			if(this.y > this.path[0].y){
 				if(this.y - this.speed.current < this.node.y - 1){
-					this.y = this.path[0].y; 
+					this.y = this.path[0].y;
 					this.back = 2;
 				} else if(this.x == Math.round(this.x)){
 					this.y -= this.speed.current;
 					this.back = 2;
 					this.next_node.y = this.node.y - 1;
-				}	
+				}
 			}
 
 			if(this.x == this.path[0].x && this.y == this.path[0].y){
@@ -629,10 +629,10 @@ class PacManAI_Shell{
 				// rebuild path
 				if(this.path.length != 0){
 					this.path.splice(0,1);
-				} 
+				}
 			}
-		}	
-	
+		}
+
 	}
 
 	draw(x = this.x, y = this.y){
@@ -641,19 +641,19 @@ class PacManAI_Shell{
 			for(var p = 0; p < this.path.length; p++){
 				this.ctx.beginPath();
 				this.ctx.arc(this.path[p].x * this.wall_settings.size + this.wall_settings.size + this.offset, this.path[p].y * this.wall_settings.size + this.wall_settings.size, 5, 0, 2 * Math.PI);
-				this.ctx.fill(); 
+				this.ctx.fill();
 			}
 		}
 
 		if(this.eaten){
 			this.ctx.strokeStyle="#222";
 		} else
-			this.ctx.strokeStyle="white"; 
-		
+			this.ctx.strokeStyle="white";
+
 		this.ctx.lineWidth = 3;
 
 		x += this.offset / this.wall_settings.size;
-		
+
 		x += 0.5;	// position correction
 		y += 0.5;	// position correction
 
@@ -668,7 +668,7 @@ class PacManAI_Shell{
 			this.ctx.lineTo(x * this.wall_settings.size - this.radius + this.radius / 3, y * this.wall_settings.size + this.radius);
 			this.ctx.lineTo(x * this.wall_settings.size - this.radius + (this.radius / 3) * 2, y * this.wall_settings.size + this.radius-this.radius / 4);
 			this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size + this.radius);
-			this.ctx.lineTo(x * this.wall_settings.size + this.radius/3, y * this.wall_settings.size + this.radius - this.radius / 4);	
+			this.ctx.lineTo(x * this.wall_settings.size + this.radius/3, y * this.wall_settings.size + this.radius - this.radius / 4);
 			this.ctx.lineTo(x * this.wall_settings.size + (this.radius / 3) * 2, y * this.wall_settings.size + this.radius);
 			this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size + this.radius - this.radius / 4);
 			this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size);
@@ -685,7 +685,7 @@ class PacManAI_Shell{
 
 		this.ctx.moveTo(x * this.wall_settings.size - this.radius, y * this.wall_settings.size);
 		this.ctx.lineTo(x * this.wall_settings.size + this.radius / 3, y * this.wall_settings.size - this.radius);
-		
+
 		this.ctx.moveTo(x * this.wall_settings.size - this.radius, y * this.wall_settings.size + this.radius / 2);
 		this.ctx.lineTo(x * this.wall_settings.size + this.radius / 1.5, y * this.wall_settings.size - this.radius / 1.35);
 
@@ -694,7 +694,7 @@ class PacManAI_Shell{
 
 		this.ctx.moveTo(x * this.wall_settings.size - this.radius / 7, y * this.wall_settings.size + this.radius - this.radius / 7);
 		this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size); // just a small number
-		
+
 		this.ctx.moveTo(x * this.wall_settings.size + (this.radius / 5) * 2, y * this.wall_settings.size + this.radius - this.radius / 10);
 		this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size + this.radius - this.radius / 2);
 		this.ctx.stroke();
@@ -712,7 +712,7 @@ class PacManAI_Shell{
 
 				// move the ghost to the x-axis center
 				this.x = this.x < 14.5 - this.speed.current ? this.x += this.speed.current : this.x > 14.5 + this.speed.current ? this.x -= this.speed.current : this.x = 14.5;
-				
+
 				// move the ghost down
 				if(this.x == 14.5)
 					if(this.y < 14)
@@ -731,8 +731,8 @@ class PacManAI_Shell{
 						this._fleeing = true;
 					}
 			}
-		} else 
-		
+		} else
+
 		// leave the ghosthouse
 		if(this.ghosthouse.inside){
 			if(this.path.length <= 1){
@@ -810,7 +810,7 @@ class PacManAI_Shell{
 
 	/**
 	 * customPath requires an x and y in one var, and returns a path, but its hidden vallue will be a boolean
-	 * @param {*} destination target 
+	 * @param {*} destination target
 	 */
 	customPath(destination){
 		this._fleeing = false;
@@ -863,19 +863,19 @@ class PacManAI_Shell{
 
 			// left
 			if (space_map[i].x == next_node.x - 1 && space_map[i].y == next_node.y && back != 3){
-				ret.push({x:space_map[i].x, y:space_map[i].y, cost:space_map[i].cost, back:1}); 
-			}	
-		
+				ret.push({x:space_map[i].x, y:space_map[i].y, cost:space_map[i].cost, back:1});
+			}
+
 			// right
 			if (space_map[i].x == next_node.x + 1 && space_map[i].y == next_node.y && back != 1) {
 				ret.push({x:space_map[i].x, y:space_map[i].y, cost:space_map[i].cost, back:3});
-			}	
-	
+			}
+
 			// down
 			if (space_map[i].x == next_node.x && space_map[i].y == next_node.y + 1 && back != 2) {
 				ret.push({x:space_map[i].x, y:space_map[i].y, cost:space_map[i].cost, back:0});
-			}	
-	
+			}
+
 			// top
 			if (space_map[i].x == next_node.x && space_map[i].y == next_node.y - 1 && back != 0) {
 				ret.push({x:space_map[i].x, y:space_map[i].y, cost:space_map[i].cost, back:2});
@@ -893,7 +893,7 @@ class PacManAI_Shell{
 		if(this.inTunnel() && !this.fleeing){
 			// tunnel teleport part
 			if(this.x >= 28 && this.y == 15){
-				this.x = 2; this.node.x = 2; this.next_node.x = 3; return false;} 
+				this.x = 2; this.node.x = 2; this.next_node.x = 3; return false;}
 			else if(this.x <= 1 && this.y == 15){
 				this.x = 27; this.node.x = 27; this.next_node.x = 26; return false;}
 
@@ -943,11 +943,11 @@ class PacManPathGenerator{
 
 	/**
 	 * Creates a path to the home specified
-	 * @param {*} node 
-	 * @param {*} next_node 
-	 * @param {*} back 
-	 * @param {*} home 
-	 * @param {*} space_map 
+	 * @param {*} node
+	 * @param {*} next_node
+	 * @param {*} back
+	 * @param {*} home
+	 * @param {*} space_map
 	 */
 	scatter(node, next_node, back, space_map, home = this.GhostBeaviour.home){
 		var path = [];
@@ -997,9 +997,9 @@ class PacManNodeTools{
 		var neighbours = [];		// neighbours of the current node
 		openset.push(node);
 
-		while(openset.length !== 0){	
+		while(openset.length !== 0){
 			var currentNode = openset[0]; // get the first item from the openset
-			
+
 			for (let i = 0; i < openset.length; i++){
 				if(openset[i].x == currentNode.x && openset[i].y == currentNode.y)
 					openset.splice(i, 1);
@@ -1009,7 +1009,7 @@ class PacManNodeTools{
 			// add the neighbours which just have been checked to the array
 			if(!this.inArray(closedset, {x:currentNode.x - 1, y:currentNode.y}))
 				neighbours.push({x:currentNode.x - 1, y:currentNode.y});
-			
+
 			if(!this.inArray(closedset, {x:currentNode.x + 1, y:currentNode.y}))
 				neighbours.push({x:currentNode.x + 1, y:currentNode.y});
 
@@ -1024,15 +1024,15 @@ class PacManNodeTools{
 				// left
 				if (!this.isWall(neighbours[n].x - 1, neighbours[n].y))
 					return {x:neighbours[n].x - 1, y:neighbours[n].y};
-				
+
 				// right
 				if (!this.isWall(neighbours[n].x + 1, neighbours[n].y))
 					return {x:neighbours[n].x + 1, y:neighbours[n].y};
-				
+
 				// down
 				if (!this.isWall(neighbours[n].x, neighbours[n].y + 1))
 					return {x:neighbours[n].x, y:neighbours[n].y + 1};
-				
+
 				// top
 				if (!this.isWall(neighbours[n].x, neighbours[n].y - 1))
 					return {x:neighbours[n].x, y:neighbours[n].y - 1};
@@ -1049,9 +1049,9 @@ class PacManNodeTools{
 		var isWall = true;
 
 		// if in the box it should be treated as a wall
-		if(!(this.ghosthouse.area[0].x < x && this.ghosthouse.area[1].x > x && 
+		if(!(this.ghosthouse.area[0].x < x && this.ghosthouse.area[1].x > x &&
 			this.ghosthouse.area[0].y < y && this.ghosthouse.area[1].y > y)){
-			
+
 			for (let i = 0; i < this.space_map.length; i++){
 				if(this.space_map[i].x == x && this.space_map[i].y == y)
 					isWall = false;
@@ -1081,7 +1081,7 @@ class PacManAI_Oikake{
 		this.x = 14;
 		this.y = 12;
 		this.home = [
-			{x: 27, y: 2}, 
+			{x: 27, y: 2},
 			{x: 26, y: 2}
 		];
 	}
@@ -1116,7 +1116,7 @@ class PacManAI_Machibuse{
 		this.x = 13;
 		this.y = 15;
 		this.home = [
-			{x: 2, y: 2}, 
+			{x: 2, y: 2},
 			{x: 3, y: 2}
 		];
 	}
@@ -1147,9 +1147,9 @@ class PacManAI_Machibuse{
 
 		if(node_tools.isWall(pacmanTarget.x, pacmanTarget.y))
 			pacmanTarget = node_tools.getNearestSpaceFrom({x:pacmanTarget.x, y:pacmanTarget.y});
-			
+
 		if(current_path.length == 0 || (pacmanTarget.x != current_path[current_path.length - 1].x || pacmanTarget.y != current_path[current_path.length - 1].y)){
-			// generate a path 
+			// generate a path
 			var path = new PacMan_PathFinding({x:next_node.x, y:next_node.y},{x:pacmanTarget.x,y:pacmanTarget.y}, space_map, "manhattan", back);
 
 			// if our node we are already moving towards is not in our path, add it
@@ -1159,8 +1159,8 @@ class PacManAI_Machibuse{
 				path.reverse();				// reverse again
 			}
 
-			return path;			
-		} else 
+			return path;
+		} else
 			return current_path;
 	}
 }
@@ -1224,7 +1224,7 @@ class PacManAI_Kimagure{
 				path.reverse();				// reverse again
 			}
 
-			return path;			
+			return path;
 		} else
 			return current_path;
 	}
