@@ -1,13 +1,13 @@
 function Pong(){
-    interfaces.menu.object = new MenuInterface();
-    interfaces.menu.object.backgroundGame = new PongGame("AI", "AI");
+    arcade.menu.object = new MenuInterface();
+    arcade.menu.object.backgroundGame = new PongGame("AI", "AI");
 
     PongMainMenuOverlay();
 }
 
 function PongMainMenuOverlay(){
-    interfaces.menu.object.buttons = [];
-    interfaces.menu.object.buttons = [
+    arcade.menu.object.buttons = [];
+    arcade.menu.object.buttons = [
         ["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
 		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
         ["START GAME", "PongGameSelectorOverlay()"]
@@ -15,8 +15,8 @@ function PongMainMenuOverlay(){
 }
 
 function PongGameSelectorOverlay(){
-    interfaces.menu.object.buttons = [];
-	interfaces.menu.object.buttons = [
+    arcade.menu.object.buttons = [];
+	arcade.menu.object.buttons = [
         ["Back", "PongMainMenuOverlay()"],
         ["Player vs AI", "newPongGame('Player', 'AI')"],
 		["AI vs Player", "newPongGame('AI', 'Player')"],
@@ -26,12 +26,12 @@ function PongGameSelectorOverlay(){
 
 function newPongGame(player1, player2){
     exit_open_game();
-    exit_open_interfaces();
-	
-	interfaces.game.object = new PongGame(player1, player2);
-	
-	interfaces.game.interval = new Interval(function(){ 
-		interfaces.game.object.update();
+    exit_open_arcade();
+
+	arcade.game.object = new PongGame(player1, player2);
+
+	arcade.game.interval = new Interval(function(){
+		arcade.game.object.update();
 	}, 15);
 }
 
@@ -94,7 +94,7 @@ class PongGame{
                 // check if the ball is in the x range of the AI
                 if((p === 0 && this.ball.x < (this.canvas.width * (2/5)) * this.window_scale) || (p === 1 && this.ball.x > (this.canvas.width * (3/5)) * this.window_scale))
                     this.players[p].CalculatePath(this.ball.y, this.window_scale);
-                else 
+                else
                     this.players[p].CalculatePath(this.canvas.height / 2, this.window_scale);
 
         this.CheckCollision();
@@ -161,23 +161,23 @@ class PongGame{
     UpdatePlayground(){
         this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
 
-        this.ctx.fillStyle = '#fff'; 
-        this.ctx.font = '48pt Segoe UI';
+        this.ctx.fillStyle = '#fff';
+        this.ctx.font = '48pt SegoeUI';
         this.ctx.textAlign = "center";
 
         // create the top lines
         this.ctx.fillRect(30 * this.window_scale, 30 * this.window_scale, 1850 * this.window_scale, 20 * this.window_scale);    // upper bar
         this.ctx.fillRect(30 * this.window_scale, 1020 * this.window_scale, 1850 * this.window_scale, 20 * this.window_scale);    // lower bar
-		
+
 		// striped middle bar
 		for (var y = 40 * this.window_scale; y < 1040 * this.window_scale; y += 60 * this.window_scale)
 			this.ctx.fillRect(this.canvas.width / 2 - 10 * this.window_scale /*half line width*/,y, 20 * this.window_scale, 30 * this.window_scale);
-    
+
         // score
         this.ctx.fillText(this.players[0].points,
                         this.canvas.width / 4, // middle of left side
                         150 * this.window_scale);
-        this.ctx.fillText(this.players[1].points, 
+        this.ctx.fillText(this.players[1].points,
                         (this.canvas.width / 4) * 3, // middle of right side
                         150 * this.window_scale);
     }
@@ -212,10 +212,10 @@ class PongGame{
                         this.ball.radians += 0.3 * (this.players[p].center - this.ball.y) / this.players[p].center;
                         this.ball.speed += 0.01;
                         this.ball.bounce("x", this.players[p].x + (p === 0 ? this.players[p].canvas.width + this.ball.radius : - this.ball.radius))
-                        
+
                         this.players[0].hitpoint = null;
                         this.players[1].hitpoint = null;
-                        
+
                         scored = false;
                     }
 
@@ -241,7 +241,7 @@ class PongGame{
 
         this.players[0].hitpoint = null;
         this.players[1].hitpoint = null;
-        
+
         this.BallCanvas.style.top = window.height / 2 - this.BallCanvas.offsetHeight / 2;
         this.BallCanvas.style.left = window.width / 2 - this.BallCanvas.offsetWidth / 2;
         this.ball = new PongBall(this.BallCanvas);
