@@ -1,8 +1,8 @@
 function Tetris(){
     new MenuInterface();
 
-    interfaces.menu.object.backgroundGame = new TetrisGame();
-    interfaces.menu.object.buttons = [
+    arcade.menu.object.backgroundGame = new TetrisGame();
+    arcade.menu.object.buttons = [
 		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
 		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
         ["START GAME", "newTetrisGame()"]
@@ -11,12 +11,12 @@ function Tetris(){
 
 function newTetrisGame(){
     exit_open_game();
-    exit_open_interfaces();
+    exit_open_arcade();
 
-	interfaces.game.object = new TetrisGame();
+	arcade.game.object = new TetrisGame();
 
-	interfaces.game.interval = new Interval(function(){
-		interfaces.game.object.update();
+	arcade.game.interval = new Interval(function(){
+		arcade.game.object.update();
 	}, 15);
 }
 
@@ -44,7 +44,7 @@ class TetrisGame{
         this.dropMinInterval = 14;
         this.gameoverTimer = 240;
 
-        if(!interfaces.menu.active){
+        if(!arcade.menu.active){
             // keychecking
             move._left.setEventListener(() => {
                 this.player.position.x--;
@@ -73,7 +73,7 @@ class TetrisGame{
             });
         }
 
-        if(!interfaces.menu.active){
+        if(!arcade.menu.active){
             this.UpdateQueueCanvas();
             this.UpdateScoreCanvas();
         }
@@ -81,7 +81,7 @@ class TetrisGame{
 
     update(){
         if(!this.gameover){
-            if ((gmap[0].buttonA || map[13]) && !interfaces.menu.active){
+            if ((gmap[0].buttonA || map[13]) && !arcade.menu.active){
                 this.player.RotateMatrix();
                 if(this.MatrixCollides())           // if we collide with a wall
                     this.player.RotateMatrix(1);    // rotate back
@@ -94,7 +94,7 @@ class TetrisGame{
             if(this.MatrixCollides()){
                 // can we place new blocks on the first line without collision?
                 if(this.player.position.y === 0)
-                    if(!interfaces.menu.active)
+                    if(!arcade.menu.active)
                         this.gameover = true;
                     else { // if we are in the menu, just clear the grid
                         this.grid = [];
@@ -106,7 +106,7 @@ class TetrisGame{
                     this.MergeMatrixWithGrid();
                     this.player.position.x = Math.floor(this.grid[0].length / 2) - 1;
                     this.player.ShiftQueue();
-                    if(!interfaces.menu.active)
+                    if(!arcade.menu.active)
                         this.UpdateQueueCanvas();
                 }
             }
@@ -145,9 +145,9 @@ class TetrisGame{
         this.ctx.fillStyle = "white";
         this.ctx.lineWidth = 4;
         this.ctx.textAlign = "center";
-		this.ctx.font = "100px segoe ui";
+		this.ctx.font = "100px " + arcade.font;
 
-        if(!interfaces.menu.active){
+        if(!arcade.menu.active){
             let TetrisNextCanvas = document.createElement('canvas');
             TetrisNextCanvas.id = 'TetrisNextCanvas';
             TetrisNextCanvas.width = window.width / 8;
@@ -165,7 +165,7 @@ class TetrisGame{
             this.TetrisNextCtx.strokeStyle = "#ffffff";
             this.TetrisNextCtx.fillStyle = "white";
             this.TetrisNextCtx.lineWidth = 5;
-            this.TetrisNextCtx.font = "50px segoe ui";
+            this.TetrisNextCtx.font = "50px " + arcade.font;
             this.TetrisNextCtx.textAlign = "center";
 
 
@@ -186,7 +186,7 @@ class TetrisGame{
             this.TetrisScoreCtx.strokeStyle = "#ffffff";
             this.TetrisScoreCtx.fillStyle = "white";
             this.TetrisScoreCtx.lineWidth = 5;
-            this.TetrisScoreCtx.font = "50px segoe ui";
+            this.TetrisScoreCtx.font = "50px " + arcade.font;
             this.TetrisScoreCtx.textAlign = "center";
 
         }
@@ -306,7 +306,7 @@ class TetrisGame{
             });
         });
 
-        if(!interfaces.menu.active){
+        if(!arcade.menu.active){
             this.player.score += 20;    // for every new block add 20 points
             this.ProcessMatrixPoints();
             this.UpdateScoreCanvas();
