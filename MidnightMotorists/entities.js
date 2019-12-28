@@ -4,7 +4,7 @@ class MidnightMotoristsPlayer{
         this.speed = 10;
         this.kmph = 0;
         this.lap = 0;
-    
+
         this.defaultcrashtime = 1000;
         this.crashtime = 0;
         this.angle = 0;
@@ -41,7 +41,7 @@ class MidnightMotoristsPlayer{
             }
         } else if(this.linetimer > 0){
             this.linetimer -= 0.5;
-        }        
+        }
 
         this.keyhandler();
         this.draw();
@@ -92,20 +92,20 @@ class MidnightMotoristsPlayer{
             this.ctx.save();                                                         // save the rest of the canvas
             this.ctx.translate(this.x + this.width / 2, this.y);                     // set the rotation point
             this.ctx.rotate(this.angle);                                             // rotate the image
-            this.ctx.drawImage(this.sprite, -(this.width / 2), -(this.height / 2));  // draw
+            this.ctx.drawImage(this.sprite, -(this.width / 2), -(this.height / 2), this.width, this.height);  // draw
             this.ctx.restore();                                                      // restore the rest of the canvas
         } else
             this.ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
 
-        this.ctx.font = "30px Arial";
+        this.ctx.font = "30px " + arcade.font;
         this.ctx.fillStyle ="white";
-        this.ctx.fillText("LAP:   " + (this.lap + 1),10,100); 
-        this.ctx.fillText("KMPH:   " + Math.round(this.kmph),10,150); 
+        this.ctx.fillText("LAP:   " + (this.lap + 1),10,100);
+        this.ctx.fillText("KMPH:   " + Math.round(this.kmph),10,150);
     }
 
     drawLine(x1, y1, x2, y2, opacity, lineWidth){
         var color = opacity;
-        this.ctx.strokeStyle = "rgb("+ color + "," + color + "," + color + ")"; 
+        this.ctx.strokeStyle = "rgb("+ color + "," + color + "," + color + ")";
         //this.ctx.strokeStyle = "yellow";
 
 		this.ctx.lineWidth = lineWidth;
@@ -113,25 +113,25 @@ class MidnightMotoristsPlayer{
 
         this.ctx.moveTo(x1, y1);
 		this.ctx.lineTo(x2, y2);
-		this.ctx.stroke(); 
+		this.ctx.stroke();
     }
 }
 
 class MidnightMotoristsCar{
     constructor(x, lane, sprite, speed, window_scale, ctx){
-        this.x = x; 
+        this.x = x;
         this.y = lane; // y in px, center. SHOULD NOT CHANGE
         this.sprite = sprite;
         this.speed = speed;
 
         this.ctx = ctx;
 		this.window_scale = window_scale;
-        
+
         this.height = 73 * this.window_scale;
         this.width = 104 * this.window_scale;
     }
 
-    update(){        
+    update(){
         this.ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
     }
 }
