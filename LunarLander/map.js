@@ -41,7 +41,7 @@ class LunarLanderMap{
             hidden:false,
         }
 
-        this.WIDTH = this.canvas.width;                 // Width of the map created
+        this.WIDTH = this.canvas.width / 2;                 // Width of the map created
         this.MAX_HEIGHT = this.canvas.height * 0.4;
         this.MIN_HEIGHT = this.canvas.height;
 
@@ -73,7 +73,7 @@ class LunarLanderMap{
 
             // we need to define the first one as there are no previous points
             if(vectorID == 0){
-                xPos = vectorID * (this.WIDTH / this.INIT_VECTORS);
+                xPos = 0;
                 yPos = Math.random() * (this.MIN_HEIGHT) + this.MAX_HEIGHT;
             } else {
                 // get the previous vector to calculate the a new angle
@@ -97,13 +97,13 @@ class LunarLanderMap{
                     else
                         yPos = -angle * (_xPos - xPos) + _yPos;
             }
+            console.log([xPos,yPos])
             this.terrain.push(this.vector(xPos, yPos))
         }
 
         // smoother
         for(let iteration = 0; iteration < this.SMOOTH_ITERATIONS; iteration++){        // for each iteration
             for(let terrain_vector_id = this.terrain.length - 1; terrain_vector_id > 0;){     // get the position of which we are trying to smooth
-
                 // store all smoothing in an array and add it later to the terrain
                 let smoothed_vectors = [];
 
@@ -139,7 +139,6 @@ class LunarLanderMap{
 
                 }
                 terrain_vector_id--;
-
                 for(let v = 1; v < smoothed_vectors.length; v++){
                     // + 1 to prevent double adding of the first point
                     this.terrain.splice(terrain_vector_id + 1, 0, smoothed_vectors[v]);
@@ -199,10 +198,11 @@ class LunarLanderMap{
      * tries to adjust the focus on the player taking in consideration the closeness to the terrain
      * @param {Object} hitbox contains a hitbox around which will be zoomed
      * @param {Object} pointer contains the plain hitbox which is required to adjust values
+     * @param {Double} playerRadians radians of the player, aka orientation
      */
-    focus(hitbox, pointer){
+    focus(hitbox, pointer, playerRadians){
         // Shift the map according to the player position
-        this.shiftMap(hitbox, pointer);
+        this.shiftMap(hitbox, pointer, playerRadians);
 
         let x = (hitbox[3].x - hitbox[0].x) / 2,
             y = (hitbox[3].y - hitbox[0].y) / 2
@@ -231,9 +231,11 @@ class LunarLanderMap{
                             - (hitbox[0].y + (hitbox[1].y - hitbox[0].y) / 2);
 
                 // zoom out of the player
+                let xScalar = Math.cos(playerRadians) == 0 ? Math.cos(playerRadians) + 0.01 : Math.cos(playerRadians);
+                let yScalar = Math.sin(playerRadians) == 0 ? Math.sin(playerRadians) + 0.01 : Math.sin(playerRadians);
                 for(let v = 0; v < pointer.length; v++){
-                    pointer[v].x = pointer[v].x / this.zoom.strength + offsetX;
-                    pointer[v].y = pointer[v].y / this.zoom.strength + offsetY * 1.5;
+                    pointer[v].x /= (this.zoom.strength + offsetX) * xScalar;
+                    pointer[v].y /= (this.zoom.strength + offsetY * 1.5) * yScalar;
                 }
 
                 // zoom out of the terrain (this one must loop backwards)
@@ -272,9 +274,11 @@ class LunarLanderMap{
                             - (hitbox[0].y + (hitbox[1].y - hitbox[0].y) / 2);
 
                 // zoom in on the player
+                let xScalar = Math.cos(playerRadians);
+                let yScalar = Math.sin(playerRadians);
                 for(let v = 0; v < pointer.length; v++){
-                    pointer[v].x = pointer[v].x * this.zoom.strength - offsetX;
-                    pointer[v].y = pointer[v].y * this.zoom.strength - offsetY * 1.5;
+                    pointer[v].x *= (this.zoom.strength - offsetX) * xScalar;
+                    pointer[v].y *= (this.zoom.strength - offsetY * 1.5) * yScalar;
                 }
 
                 // zoom in on the terrain (this one must loop backwards)
@@ -300,44 +304,50 @@ class LunarLanderMap{
      * Adjusts the player to stay inside the specified movehitbox
      * @param {Object} hitbox contains a hitbox around which will be zoomed
      * @param {Object} pointer contains the plain hitbox which is required to adjust values
+     * @param {Double} playerRadians radians of the player, aka orientation
      */
-    shiftMap(hitbox, pointer){
+    shiftMap(hitbox, pointer, playerRadians){
         // check if the most left side of the visible map is larger than 0 and the right side smaller than the map
         if(this.canvas.width / 2 - window.width / 2 >= 0 &&
            this.canvas.width / 2 + window.width / 2 <= this.canvas.width){
-            let offsetX = 0, offsetY = 0;
-            // when moving left
-            if(hitbox[0].x < this.movehitbox[0].x)
-                offsetX = this.movehitbox[0].x - hitbox[0].x;
 
-            // when moving to up
-            if(hitbox[0].y < this.movehitbox[0].y)
-                offsetY = this.movehitbox[0].y - hitbox[0].y;
 
-            // when moving right
-            if(hitbox[3].x > this.movehitbox[1].x)
-                offsetX = this.movehitbox[1].x - hitbox[3].x;
+            // let offsetX = 0, offsetY = 0;
+            // // when moving left
+            // if(hitbox[0].x < this.movehitbox[0].x)
+            //     offsetX = this.movehitbox[0].x - hitbox[0].x;
 
-            // when moving down
-            if(hitbox[3].y > this.movehitbox[1].y)
-                offsetY = this.movehitbox[1].y - hitbox[3].y;
+            // // when moving to up
+            // if(hitbox[0].y < this.movehitbox[0].y)
+            //     offsetY = this.movehitbox[0].y - hitbox[0].y;
 
-            // Prevent unnecessary looping
-            if(offsetX != 0 || offsetY != 0){
-                // Adjust the player
-                for (let h = 0; h < hitbox.length; h++){
-                    pointer[h].x += offsetX;
-                    pointer[h].y += offsetY;
-                }
+            // // when moving right
+            // if(hitbox[3].x > this.movehitbox[1].x)
+            //     offsetX = this.movehitbox[1].x - hitbox[3].x;
 
-                // Adjust the terrain
-                for (let t = 0; t < this.terrain.length; t++) {
-                    const tPos = this.terrain[t];
+            // // when moving down
+            // if(hitbox[3].y > this.movehitbox[1].y)
+            //     offsetY = this.movehitbox[1].y - hitbox[3].y;
 
-                    tPos.x += offsetX;
-                    tPos.y += offsetY;
-                }
-            }
+            // // Prevent unnecessary looping
+            // if(offsetX != 0 || offsetY != 0){
+            //     let xScalar = Math.cos(playerRadians);
+            //     let yScalar = Math.sin(playerRadians);
+
+            //     // Adjust the player
+            //     for (let h = 0; h < hitbox.length; h++){
+            //         pointer[h].x += offsetX * xScalar;
+            //         pointer[h].y += offsetY * yScalar;
+            //     }
+
+            //     // Adjust the terrain
+            //     for (let t = 0; t < this.terrain.length; t++) {
+            //         const tPos = this.terrain[t];
+
+            //         tPos.x += offsetX;
+            //         tPos.y += offsetY;
+            //     }
+            // }
         }
     }
 
@@ -348,6 +358,30 @@ class LunarLanderMap{
 
             let x = (hitbox[3].x - hitbox[0].x) / 2,
                 y = (hitbox[3].y - hitbox[0].y) / 2
+
+            // this.ctx.globalAlpha = 1;
+            // this.ctx.fillRect(
+            //     hitbox[0].x,
+            //     hitbox[0].y,
+            //     hitbox[3].x - hitbox[0].x,
+            //     hitbox[3].y - hitbox[0].y,
+            // );
+
+            if(hitbox.length > 0){
+                this.ctx.strokeStyle = "red";
+                this.ctx.globalAlpha = 1;
+
+                // this.ctx.lineWidth = "10px";
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(hitbox[0].x, hitbox[0].y);
+
+                for(var i = 0, p; p = hitbox[i++];)
+                    this.ctx.lineTo(p.x, p.y);
+
+                this.ctx.closePath();
+                this.ctx.stroke();
+            }
 
             this.ctx.globalAlpha = 0.7;
             this.ctx.fillRect(
@@ -383,7 +417,7 @@ class LunarLanderMap{
 
         for(let landingtype in this.landingspot){
             for(let spot = 0; spot < this.landingspot[landingtype].length; spot++){
-                this.ctx.font = "20px segoe ui";
+                this.ctx.font = "20px " + arcade.font;
                 this.ctx.fillText(landingtype,this.terrain[this.landingspot[landingtype][spot].p1].x, 30);
             }
         }
