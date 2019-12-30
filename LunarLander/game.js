@@ -1,14 +1,14 @@
 function LunarLander(){
     newLunarLanderGame(0);
 
-    // interfaces.menu.object = new MenuInterface();
-    // interfaces.menu.object.backgroundGame = new PongGame("AI", "AI");
+    // arcade.menu.object = new MenuInterface();
+    // arcade.menu.object.backgroundGame = new PongGame("AI", "AI");
 
     // LunarLanderMainMenuOverlay();
 }
 
 function LunarLanderMainMenuOverlay(){
-    interfaces.menu.object.buttons = [
+    arcade.menu.object.buttons = [
         ["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
 		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
         ["START GAME", "LunarLanderGameSelectorOverlay()"]
@@ -16,7 +16,7 @@ function LunarLanderMainMenuOverlay(){
 }
 
 function LunarLanderGameSelectorOverlay(){
-	interfaces.menu.object.buttons = [
+	arcade.menu.object.buttons = [
         ["Back", "LunarLanderMainMenuOverlay()"],
         ["Player vs AI", "newLunarLanderGame('Player', 'AI')"],
 		["AI vs Player", "newLunarLanderGame('AI', 'Player')"],
@@ -26,15 +26,15 @@ function LunarLanderGameSelectorOverlay(){
 
 function newLunarLanderGame(difficulty){
     exit_open_game();
-    exit_open_interfaces();
+    exit_open_arcade();
 
     this.collision_chance = 0;//300;   // actually an interval, so its starting point will be high
     this.collision_timer = 0;
 
-	interfaces.game.object = new LunarLanderGame();
+	arcade.game.object = new LunarLanderGame();
 
-	interfaces.game.interval = new Interval(function(){
-		interfaces.game.object.update();
+	arcade.game.interval = new Interval(function(){
+		arcade.game.object.update();
 	}, 15);
 }
 
@@ -53,7 +53,8 @@ class LunarLanderGame{
     update(){
 
         // if(this.player.updateZoomHitbox){
-            this.map.focus(this.player.processHitbox(), this.player.hitbox);
+        // this.map.focus(this.player.processHitbox(), this.player.hitbox, this.player.radians);
+        this.map.render(this.player.processHitbox());
             // this.player.updateZoomHitbox = false;
         // }
         this.player.update();
