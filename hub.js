@@ -299,5 +299,5 @@ function load(game){
     remove_all_canvases();
 
     // make sure () only appears once
-    eval(game.replace(/\s/,'').replace("()", '') + "()");
+    eval(game.replace("()", '') + "()");
 }
