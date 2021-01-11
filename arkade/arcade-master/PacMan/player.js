@@ -1,0 +1,316 @@
+class PacManPlayer{
+    constructor(wallSettings, wallMap, size = canvas.width / 128 /* = 15*/){
+        this.x = 14.5;
+        this.y = 24;
+        this.speed = 0.1;
+
+        this.node = {
+            x:14,
+            y:24
+        }
+
+        this.powered = {
+            state: 0,           // 0 = normal 1 = powered 2 = ending
+            size:2,             // pixel in wh will expand
+            timer:20,            // times it will switch
+            current_size: 0,    // max will be 3 (px)
+            shrinking: false    // switch
+        }
+
+        this.mouth_angle = 0.25;    // Math.PI * 0.25 = 45 degrees
+        this.mouth_closing = true;  // switch
+
+        this.angle = 3;             // up = 0, right = 1, down = 2, left = 3 
+        this.radius = size;
+        this.wallMap = wallMap;
+        this.wallSettings = wallSettings;
+    }
+
+    update(){
+        this.updateOwnNode();   
+        this.keyHandler();
+
+    }
+
+    keyHandler(){
+        if(move.right){//|| this.angle == 1){
+            if(!this.isWall(this.speed, 0)){ // is it a wall?
+                if(this.x + this.speed > this.node.x + 1){ // are we going past a node
+                    this.x = this.node.x + 1; // make our location the node
+                } else if(this.y == Math.round(this.y)){ // so we can move in an other direction
+                    this.x += this.speed;
+                    this.angle = 1;
+                }
+            } else {
+                this.x = this.node.x;
+            }
+        }
+
+        if(move.left){// || this.angle == 3){
+            if(!this.isWall(-this.speed, 0)){
+                if(this.x - this.speed < this.node.x - 1){
+                    this.x = this.node.x - 1;
+                } else if(this.y == Math.round(this.y)){
+                    this.x -= this.speed;
+                    this.angle = 3;
+                }
+            } else {
+                this.x = this.node.x;
+            }
+        }
+
+        // remove noise after four digits
+        this.x = Math.round(this.x * 1000) / 1000;
+
+        if(move.down){// || this.angle == 2){
+            if(!this.isWall(0, this.speed)){
+                if(this.y + this.speed > this.node.y + 1){
+                    this.y = this.node.y + 1;
+                } else if(this.x == Math.round(this.x)){
+                    this.y += this.speed;
+                    this.angle = 2;
+                }
+            } else {
+                this.y = this.node.y;
+            }
+        }
+
+        if(move.up){// || this.angle == 0){
+            if(!this.isWall(0, -this.speed)){
+                if(this.y - this.speed < this.node.y - 1){
+                    this.y = this.node.y - 1;
+                } else if(this.x == Math.round(this.x)){
+                    this.y -= this.speed;
+                    this.angle = 0;
+                }
+            } else {
+                this.y = this.node.y;
+            }
+        }
+
+        // remove noise after four digits
+        this.y = Math.round(this.y * 1000) / 1000;
+
+        // teleport part
+        if(this.node.x == 28 && this.node.y == 15){
+            this.x = 2; this.node.x = 2;} 
+        else if(this.node.x == 1 && this.node.y == 15){
+            this.x = 27; this.node.x = 27;}
+
+        this.draw();
+    }
+
+    draw(){
+        ctx.fillStyle="black";
+        if (this.powered.state == 1){ // go to powered state
+            ctx.lineWidth = this.wallSettings.border_thickness - 2 + this.powered.current_size;
+            if(this.powered.current_size < this.powered.size) // expand till 1.5
+                this.powered.current_size += 0.125;
+
+        } else if (this.powered.state == 2){ // switch between 0 and 1
+            ctx.lineWidth = this.wallSettings.border_thickness - 2 + this.powered.current_size;
+
+            // flicker
+            if(this.powered.shrinking){
+                this.powered.current_size -= 0.125;
+                if (this.powered.current_size <= 0){
+                    this.powered.current_size = 0;
+                    this.powered.shrinking = false;
+                    this.powered.timer -= 1;
+                }
+            } else {
+                this.powered.current_size += 0.125;
+                if (this.powered.current_size >= this.powered.size){
+                    this.powered.current_size = this.powered.size;
+                    this.powered.shrinking = true;
+                    this.powered.timer -= 1;
+                }
+            }
+
+            if(this.powered.timer == 0){
+                this.powered.state = 0;     // set the state to default
+                this.powered.timer = 20;    // reset the timer for the next activation
+            }                 
+
+        } else { // default == not in powered state
+            ctx.lineWidth = this.wallSettings.border_thickness - 2 + this.powered.current_size;
+            if(this.powered.current_size > 0) // shrink till 0
+                this.powered.current_size -= 0.125;
+        }
+
+		var x = this.x + 0.5;	// position correction
+		var y = this.y + 0.5;	// position correction
+
+        ctx.beginPath();
+
+        // move to the center of pacman
+        ctx.moveTo(x * this.wallSettings.size, y * this.wallSettings.size);
+
+        // draw the circle
+        if(this.angle == 0)
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (1.75 - this.mouth_angle), Math.PI * (1.25 + this.mouth_angle), false); // up
+        else if(this.angle == 1)
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (0.25 - this.mouth_angle), Math.PI * (1.75 + this.mouth_angle), false); // right
+        else if(this.angle == 2)
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (0.75 - this.mouth_angle), Math.PI * (0.25 + this.mouth_angle), false); // down
+        else
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (1.25 - this.mouth_angle), Math.PI * (0.75 + this.mouth_angle), false); // left
+        
+        ctx.fill();
+
+
+        ctx.strokeStyle="white";
+        ctx.beginPath();
+        // then we draw the outline border
+
+        // draw the border and a line to the middle
+        if(this.angle == 0) {
+            // draw the circle
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (1.75 - this.mouth_angle), Math.PI * (1.25 + this.mouth_angle), false); // up
+            
+            // 0.08 = graphical correction
+            // calculate the position of the gap of the circle
+            var x0 = x * this.wallSettings.size - 0.8 + this.radius * -Math.cos((1.75 - this.mouth_angle) * Math.PI);
+            var y0 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((1.25 + this.mouth_angle) * Math.PI);  
+
+            var x1 = x * this.wallSettings.size + 0.8 + this.radius * Math.cos((1.75 - this.mouth_angle) * Math.PI);
+            var y1 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((1.25 + this.mouth_angle) * Math.PI);  
+
+            // draw the lines
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
+
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
+
+        } else if(this.angle == 1) {
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (0.25 - this.mouth_angle), Math.PI * (1.75 + this.mouth_angle), false); // right
+        
+            // 0.08 = graphical correction
+            // calculate the position of the gap of the circle
+            var x0 = x * this.wallSettings.size - 0.8 + this.radius * Math.cos((0.25 - this.mouth_angle) * Math.PI);
+            var y0 = y * this.wallSettings.size + 0.8 + this.radius * -Math.sin((1.75 + this.mouth_angle) * Math.PI);  
+
+            var x1 = x * this.wallSettings.size + 0.8 + this.radius * Math.cos((0.25 - this.mouth_angle) * Math.PI);
+            var y1 = y * this.wallSettings.size - 0.8 + this.radius * Math.sin((1.75 + this.mouth_angle) * Math.PI);  
+
+            // draw the lines
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
+
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
+
+        } else if(this.angle == 2) {
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (0.75 - this.mouth_angle), Math.PI * (0.25 + this.mouth_angle), false); // down
+        
+            // 0.08 = graphical correction
+            // calculate the position of the gap of the circle
+            var x0 = x * this.wallSettings.size + 0.8 + this.radius * -Math.cos((0.75 - this.mouth_angle) * Math.PI);
+            var y0 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((0.25 + this.mouth_angle) * Math.PI);  
+
+            var x1 = x * this.wallSettings.size - 0.8 + this.radius * Math.cos((0.75 - this.mouth_angle) * Math.PI);
+            var y1 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((0.25 + this.mouth_angle) * Math.PI); 
+
+            // draw the lines
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
+
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
+
+        } else {
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (1.25 - this.mouth_angle), Math.PI * (0.75 + this.mouth_angle), false); // left
+        
+            // 0.08 = graphical correction
+            // calculate the position of the gap of the circle
+            var x0 = x * this.wallSettings.size + 0.8 + this.radius * Math.cos((1.25 - this.mouth_angle) * Math.PI);
+            var y0 = y * this.wallSettings.size - 0.8 + this.radius * -Math.sin((0.75 + this.mouth_angle) * Math.PI);  
+
+            var x1 = x * this.wallSettings.size - 0.8 + this.radius * Math.cos((1.25 - this.mouth_angle) * Math.PI);
+            var y1 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((0.75 + this.mouth_angle) * Math.PI);  
+
+            // draw the lines
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
+
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
+        }
+
+        ctx.stroke();
+
+        // this animates the mouth movement
+        var closingSpeed = 0.0075; // mouth movement speed, must be equal or below 0.25
+        if(this.mouth_closing){
+            this.mouth_angle -= closingSpeed;
+            if (this.mouth_angle <= 0){
+                this.mouth_angle = 0;
+                this.mouth_closing = false;
+            }
+        } else {
+            this.mouth_angle += closingSpeed;
+            if (this.mouth_angle >= 0.25){
+                this.mouth_angle = 0.2499; // making it larger than 0.25 results in a flicker as it can't draw the circle
+                this.mouth_closing = true;
+            }
+        }        
+    }
+    /**
+     * checks if movement is possible. One variable must be 0 
+     * @param {direction} x either positive, negative or 0
+     * @param {direction} y either positive, negative or 0
+     */
+    isWall(x = 0, y = 0){
+        if(x == 0 && y == 0){
+            return false;
+        }
+
+        for (let i = 0; i < this.wallMap.length; i++){
+            // if x is positive
+			if(x > 0){
+                if (y == 0){
+                    if(Math.ceil(this.x + x) == this.wallMap[i].x && Math.round(this.y) == this.wallMap[i].y){
+                        return true;
+                    }
+                }
+            } 
+            // if x is negative
+            else if(x < 0){
+                if (y == 0){
+                    if(Math.floor(this.x + x) == this.wallMap[i].x && Math.round(this.y) == this.wallMap[i].y){
+                        return true;
+                    }
+                }
+            } 
+            // if x is 0
+            else if (x == 0){
+                if(y > 0){
+                    if(Math.floor(this.x) == this.wallMap[i].x && Math.ceil(this.y + y) == this.wallMap[i].y){
+                        return true;
+                    }
+                } else if (y < 0){
+                    if(Math.floor(this.x) == this.wallMap[i].x && Math.floor(this.y + y) == this.wallMap[i].y){
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    updateOwnNode(){
+        if(this.x + this.speed > this.node.x + 1 - 0.015)
+            this.node.x += 1;
+
+        if(this.x - this.speed < this.node.x - 1 + 0.015)
+            this.node.x -= 1;
+
+        if(this.y + this.speed > this.node.y + 1 - 0.015)
+            this.node.y += 1;
+
+        if(this.y - this.speed < this.node.y - 1 + 0.015)
+            this.node.y -= 1;
+    }
+}
