@@ -1,56 +1,83 @@
-function Pacman(){
-	new MenuInterface();
-	interfaces.menu.object.buttons = [
-		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
-		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
-		["START GAME", "newPacmanGame()"]
-	];
+var pacManGame;
 
-	interfaces.menu.object.backgroundGame = interfaces.game.object = new PacManGame();
+function PacMan(){
+	if(typeof gameInterval !== "undefined")
+	gameInterval.stop();
+
+	if(typeof overlayInterval !== "undefined")
+		overlayInterval.stop();
+
+	menuOverlay = new MenuOverlay();
+	PacManMainMenuOverlay();
+
+	menuOverlay.backgroundGame = new PacManGame();
+	pacManGame = menuOverlay.backgroundGame;
+
+	overlayInterval = new Interval(function(){ 
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		menuOverlay.update();
+	}, 15);
 }
 
-function newPacmanGame(){	
-	exit_open_game();
-	exit_open_interfaces();
-	remove_all_canvases();
+function PacManMainMenuOverlay(){
+	menuOverlay.buttons = [
+		new Button(120, canvas.height - 230, 400, 30, "START GAME", "newPacManGame()"),
+		new Button(120, canvas.height - 150, 400, 30, "HIGH SCORES", "loadHighscores('" + currentGame + "', 0, true)"),
+		new Button(120, canvas.height - 70, 400, 30,"EXIT", "loadHub()")
+	];
+}
+
+function newPacManGame(){	
+	if(typeof gameInterval !== "undefined")
+		gameInterval.stop();
 	
-	interfaces.game.object = new PacManGame();
+	if(typeof overlayInterval !== "undefined")
+		overlayInterval.stop();
 	
-	interfaces.game.interval = new Interval(function(){ 
-		interfaces.game.object.update();
+	OverlayIsActive = false;
+	
+	pacManGame = new PacManGame();
+	
+	gameInterval = new Interval(function(){ 
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		pacManGame.update();
 	}, 15);
 }
 
 class PacManGame{
 	constructor(){
-		move.continuous = true;
-		this.window_scale = window.height / 1080;
-		this.OverlayIsActiveActivated = false;
-		this.offset = window.width / 2 - (900 * window.height / 1080) / 2;
+		move.smooth = true;
 
-		// create a canvas containing the options
-		let PacManCanvas = document.createElement('canvas');
-		PacManCanvas.id = 'PacManCanvas';
-		PacManCanvas.width = window.width;
-		PacManCanvas.height = window.height;			// is set later
-		PacManCanvas.style.left = 0;
-		PacManCanvas.style.bottom = 0;
-		PacManCanvas.style.position = "absolute";
-		PacManCanvas.style.cursor = "none";
-		PacManCanvas.style.zIndex = 1;
-		document.body.appendChild(PacManCanvas);
-
-		this.canvas = document.getElementById("PacManCanvas");		// canvas stuff
-		this.ctx = this.canvas.getContext("2d");	// canvas stuff
+		this.wall = {
+			size: canvas.width / 68.571428571428571428571428571429, // = 28
+			thickness: 10 ,//canvas.width / 384, 			// = 5, thickness of the borders, 1 is limit
+			
+			border_thickness: canvas.width / 384, 	// = 5, line widt of the borders in px
+			color:"white",
+			
+			debug:{color_flat:"green", color_1corner:"orange", color_3corner:"yellow", color_closed:"purple",color_alone:"red"}
+		};
 		
-		this.map = new PacManMap(this.window_scale);
-		this.ai = new PacManAI(this.map.settings, this.map.space, this.map.intersections, this.map.tunnel, this.offset, this.ctx);
-		this.player = new PacManPlayer(this.map.settings, this.map.walls, this.offset, this.ctx);
+		this.powerup = {
+			color:"white", 		// either HEX or color name
+			size: canvas.width / 274.28571428571428571428571428571	// = 7, size in px
+		};
+		
+		this.eatable = {
+			color:"white", 	// either HEX or color name
+			size: canvas.width / 960	// = 2, size in px
+		};
+		
+		this.map = new PacManMap();
+		this.ai = new PacManAI(this.wall, this.map.space, this.map.intersections, this.map.tunnel);
+		this.player = new PacManPlayer(this.wall, this.map.walls);
 
+		this.haseaten = false;		// if we eat either a eatable or powerup, this will be true and processed
 		this.def_eattimer = 240; 	// 4 x 60 sec
 		this.eattimer = 240;		// if this is below 0, release a ghost
 
 		this.eatables_eaten = 0;
+		this.powerups_eaten = 0;
 		this.ghosts_eaten = [];
 
 		// this.sounds = {
@@ -68,26 +95,23 @@ class PacManGame{
 		this.modeTableHandler();
 		
 		this.ready = {
-			state:false,
-			timer:270,
-			def_timer:270
-		};
-	}
-
-	exit(){
-		if(document.getElementById("PacManCanvas") !== null && document.getElementById("PacManMap") !== null){
-			document.getElementById("PacManCanvas").parentElement.removeChild(document.getElementById("PacManCanvas"))
-			document.getElementById("PacManMap").parentElement.removeChild(document.getElementById("PacManMap"))
+			state:false,		// whether the countdown has run out
+			def_timer:270,		// 350
+			timer:270
 		}
-
-		interfaces.game.interval.stop();
-		interfaces.game.object = {};
+		this.gamemode = "";
 	}
 	
 	update(){
-		this.ctx.clearRect(0, 0, window.width, window.height);
+		// move the drawn part with a certain offset
+		ctx.save();
+		ctx.translate(canvas.width/2 - (30 * this.wall.size) / 2,canvas.height / 2 - (33 * this.wall.size) / 2);
+		
+		// draw the map
+		this.map.draw(this.wall);
+		
 		// if in the overlay
-		if(!interfaces.menu.active){
+		if(!OverlayIsActive){
 			// update the game system
 			this.interactionHandler();
 			this.eatablesHandler();
@@ -98,8 +122,6 @@ class PacManGame{
 			if(this.ready.state){
 				// update the ai and player
 				pacmanBgsound.play();
-				pacmanBgsound.volume = 0.7;
-				pacmanReady.pause();
 
 				this.player.update();
 				this.ai.update({x: this.player.node.x, y: this.player.node.y, angle:this.player.angle}, this.ai.ghosts);
@@ -110,34 +132,32 @@ class PacManGame{
 				this.player.mouth_angle = 0.1;
 				this.player.draw();
 				
-				for(var g = 0; g < this.ai.ghosts.length; g++)
-					this.ai.ghosts[g].draw();
-				
+				for(var g = 0; g < this.ai.ghosts.length; g++){
+					this.ai.ghosts[g].draw(this.ai.ghosts[g].x, this.ai.ghosts[g].y);
+				}
 			}
 		} else {
-			if(!this.OverlayIsActiveActivated){
-				this.OverlayIsActiveActivated = true;
-				this.ai.ghosthouse.release(2);
-				this.ai.ghosthouse.release(3);
-				
-				for(var g = 0; g < this.ai.ghosts.length; g++){
-					if(!this.ai.ghosts[g].fleeing)
-						this.ai.ghosts[g].fleeing = true;
-						
-					this.ai.ghosts[g]._animate_fleeing = false;
-				}
+			this.ai.box.release(2);
+			this.ai.box.release(3);
+			
+			for(var g = 0; g < this.ai.ghosts.length; g++){
+				if(!this.ai.ghosts[g].fleeing)
+					this.ai.ghosts[g].fleeing = true;
+					
+				this.ai.ghosts[g]._fleeing_animate = false;
 			}
 		
 			this.ai.update({x: this.player.node.x, y: this.player.node.y, angle:this.player.angle}, this.ai.ghosts);
 		}
+		
+		ctx.restore();
 	}
 	
 	restoreLevel(){
 		var globalcounter = this.ai.eatTable.counter;
-		this.ghosts_eaten = [];
 		
-		this.player = new PacManPlayer(this.map.settings, this.map.walls, this.offset, this.ctx);
-		this.ai = new PacManAI(this.map.settings, this.map.space, this.map.intersections, this.map.tunnel, this.offset, this.ctx);
+		this.player = new PacManPlayer(this.wall, this.map.walls);
+		this.ai = new PacManAI(this.wall, this.map.space, this.map.intersections, this.map.tunnel);
 		
 		this.ai.eatTable.counter = globalcounter;
 		this.ai.eatTable.died = true;
@@ -151,20 +171,20 @@ class PacManGame{
 		this.ai.eatTable.died = false;
 		this.eatables_eaten = 0;
 		this.ai.eatTable.counter = 0;
-		this.ready.state = false;
+		this.ready.timer = this.ready.def_timer;
 			
-		this.map = new PacManMap(this.window_scale); 
+		this.map = new PacManMap(); 
 		
 		this.modeTableHandler();
 		this.restoreLevel();
 	}
 	
 	readyHandler(){
-		if(this.ready.timer > 0 && !this.ready.state){
+		if(this.ready.timer > 0){
 			this.ready.timer--;
 			pacmanBgsound.pause();
 		} else {
-			this.ready.timer = 270;
+			this.ready.timer = this.ready.def_timer;
 			this.ready.state = true;
 		}
 	}
@@ -173,12 +193,12 @@ class PacManGame{
 		for(var l = 0; l < this.lives; l++){
 			var img = new Image(); 
 			img.src = "PacMan/src/PacMan.png";
-			this.ctx.drawImage(img, this.map.settings.size * 1.5 * (l + 1), (this.map.size.rows + 2) * this.map.settings.size);
+			ctx.drawImage(img, this.wall.size * 1.5 * (l + 1), (this.map.size.rows + 2) * this.wall.size);
 		}
 
-		this.ctx.font = "30px Arial";
-		this.ctx.fillStyle ="white";
-		this.ctx.fillText("POINTS: " + this.points,this.map.settings.size * 10, (this.map.size.rows + 3) * this.map.settings.size); 
+		ctx.font = "30px Arial";
+		ctx.fillStyle ="white";
+		ctx.fillText("POINTS: " + this.points,this.wall.size * 10, (this.map.size.rows + 3) * this.wall.size); 
 	}
 
 	modeTableHandler(){
@@ -216,6 +236,7 @@ class PacManGame{
 		for(var p = 0; p < this.map.powerup.length; p++){
 			if(this.player.node.x == this.map.powerup[p].x && this.player.node.y == this.map.powerup[p].y && !this.map.powerup[p].eaten){
 				this.map.powerup[p].eaten = true;
+				this.powerups_eaten++;
 				this.points += 50;
 				this.ghosts_eaten = [];
 
@@ -230,28 +251,28 @@ class PacManGame{
 		// draw powerups
 		for (var p = 0; p < this.map.powerup.length; p++){
 			if(!this.map.powerup[p].eaten){
-				this.ctx.beginPath(); // if not eaten
-				this.ctx.fillStyle = this.map.settings.powerup.color; 
+				ctx.beginPath(); // if not eaten
+				ctx.fillStyle = this.powerup.color; 
 			
-				this.ctx.arc((this.map.powerup[p].x + 1) * this.map.settings.size - this.map.settings.size / 2 + this.offset,
-					(this.map.powerup[p].y + 1) * this.map.settings.size - this.map.settings.size / 2,
-					this.map.settings.powerup.size,0,2*Math.PI);
+				ctx.arc((this.map.powerup[p].x + 1) * this.wall.size - this.wall.size / 2,
+					(this.map.powerup[p].y + 1) * this.wall.size - this.wall.size / 2,
+					this.powerup.size,0,2*Math.PI);
 						
-				this.ctx.fill();
+				ctx.fill();
 			}
 		}
 		
 		// draw powerups
 		for (var e = 0; e < this.map.eatable.length; e++){
 			if(!this.map.eatable[e].eaten){ // if not eaten
-				this.ctx.beginPath();
-				this.ctx.fillStyle = this.map.settings.eatable.color; 
+				ctx.beginPath();
+				ctx.fillStyle = this.eatable.color; 
 			
-				this.ctx.arc((this.map.eatable[e].x + 1) * this.map.settings.size - this.map.settings.size / 2 + this.offset,
-					(this.map.eatable[e].y + 1) * this.map.settings.size - this.map.settings.size / 2,
-					this.map.settings.eatable.size,0,2*Math.PI);
+				ctx.arc((this.map.eatable[e].x + 1) * this.wall.size - this.wall.size / 2,
+					(this.map.eatable[e].y + 1) * this.wall.size - this.wall.size / 2,
+					this.eatable.size,0,2*Math.PI);
 						
-				this.ctx.fill();
+				ctx.fill();
 			}
 		}	
 	}
@@ -259,22 +280,8 @@ class PacManGame{
 	// check if the player is caught by a ghost
 	interactionHandler(){
 		for(var g = 0; g < this.ai.ghosts.length; g++){
-			// check if the player caught a ghost
-			if (this.ai.ghosts[g].node.x == this.player.node.x && this.ai.ghosts[g].node.y == this.player.node.y && this.player.powered.state != 0 && !this.inArray(g, this.ghosts_eaten)){
-				// update the score accordingly
-				this.ghosts_eaten.push(g);
-				this.ai.ghosthouse.contain(g);	
-
-				this.ai.ghosts[g].eaten = true;
-				this.ai.ghosts[g]._waseaten = true;
-
-				this.points += 400 * this.ghosts_eaten.length;
-
-				//pacmanGhosteaten.play();
-			} else 
-
-			// check if the player is caught
-			if(this.ai.ghosts[g].node.x == this.player.node.x && this.ai.ghosts[g].node.y == this.player.node.y && this.ai.ghosts[g].eaten == false && (this.player.powered.state == 0 || this.inArray(g, this.ghosts_eaten)) || this.player.eaten){
+			if(this.ai.ghosts[g].node.x == this.player.node.x && this.ai.ghosts[g].node.y == this.player.node.y && this.player.powered.state == 0){
+				// the player is caught
 				
 				pacmanDeath.play();
 
@@ -287,19 +294,27 @@ class PacManGame{
 				if(this.player.nodraw && this.lives != 0)
 					this.restoreLevel();
 				else if(this.player.nodraw && this.lives == 0)
-					new HighScoresInterface("Pacman", this.points);
-			} 
+					loadHighscores("PacMan", this.points);
+			}
 		}
 		
 		if(this.eatables_eaten == 240)
 			this.levelUp();
-	}
 
-	inArray(item, array){
-		for (var i = 0; i < array.length; i++){
-			if(item == array[i])
-				return true;
+		for(var g = 0; g < this.ai.ghosts_eaten.length; g++){
+			var isNew = true;
+			for(var a = 0; a < this.ghosts_eaten.length; a++){
+				if(this.ghosts_eaten[a] == this.ai.ghosts_eaten[g])
+					isNew = false;
+			}
+
+			if(isNew){
+				console.log(this.ai.ghosts_eaten.length);
+				this.ghosts_eaten.push(this.ai.ghosts_eaten[g]);
+				this.points += 400 * this.ghosts_eaten.length;
+
+				pacmanGhosteaten.play();
+			}
 		}
-		return false;
 	}
 }

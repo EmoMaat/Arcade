@@ -1,80 +1,82 @@
-function MidnightMotorists(){
-	new MenuInterface();
+var midnightMotoristsGame;
+var motorTitle = new Image();
+motorTitle.src = "MidnightMotorists/sprites/title.png";
 
-    interfaces.menu.object.backgroundGame = new MidnightMotoristsGame();
-    interfaces.menu.object.header = "MidnightMotorists/sprites/title.png";
-    interfaces.menu.object.buttons = [
-		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
-		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
-        ["START GAME", "newMidnightMotoristsGame()"]
+function MidnightMotorists(){
+	if(typeof gameInterval !== "undefined")
+	gameInterval.stop();
+
+	if(typeof overlayInterval !== "undefined")
+        overlayInterval.stop();
+
+	menuOverlay = new MenuOverlay();
+	MidnightMotoristsMainMenuOverlay();
+
+    menuOverlay.backgroundGame = new MidnightMotoristsGame();
+    menuOverlay.backgroundGame.overlay = true;
+	midnightMotoristsGame = menuOverlay.backgroundGame;
+
+	overlayInterval = new Interval(function(){ 
+        //ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "black"
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+		menuOverlay.update();
+		ctx.drawImage(motorTitle,canvas.width/2 - motorTitle.width/2,100);
+	}, 15);
+}
+
+function MidnightMotoristsMainMenuOverlay(){
+	menuOverlay.buttons = [
+		new Button(canvas.width/2 - 200, canvas.height - 510 + 90, 400, 30, "START GAME", "newMidnightMotoristsGame()"),
+		new Button(canvas.width/2 - 200, canvas.height - 430 + 90, 400, 30, "HIGH SCORES", "loadHighscores('" + currentGame + "', 0,true)"),
+		new Button(canvas.width/2 - 200, canvas.height - 350 + 90, 400, 30, "HOW TO PLAY", "loadInstructions()"),
+		new Button(canvas.width/2 - 200, canvas.height - 270 + 90, 400, 30,"EXIT", "loadHub()")
 	];
 }
 
-
 function newMidnightMotoristsGame(){
-    exit_open_game();
-    exit_open_interfaces();
-    remove_all_canvases();
+    if(typeof gameInterval !== "undefined")
+		gameInterval.stop();
 	
-	interfaces.game.object = new MidnightMotoristsGame();
+	if(typeof overlayInterval !== "undefined")
+		overlayInterval.stop();
+    
+    midnightMotoristsGame.audioMenu.pause();
+	OverlayIsActive = false;
 	
-	interfaces.game.interval = new Interval(function(){ 
-		interfaces.game.object.update();
+	midnightMotoristsGame = new MidnightMotoristsGame();
+	
+	gameInterval = new Interval(function(){ 
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		midnightMotoristsGame.update();
 	}, 15);
 }
 
 class MidnightMotoristsGame{
 	constructor(){
-        let MidnightMotoristsCanvas = document.createElement('canvas');
-		MidnightMotoristsCanvas.id = 'MidnightMotoristsCanvas';
-		MidnightMotoristsCanvas.width = window.width;
-		MidnightMotoristsCanvas.height = window.height;
-		MidnightMotoristsCanvas.style.left = 0;
-		MidnightMotoristsCanvas.style.zIndex = 1;
-		MidnightMotoristsCanvas.style.position = "absolute";
-		MidnightMotoristsCanvas.style.cursor = "none";
-		document.body.appendChild(MidnightMotoristsCanvas);
-
-		this.canvas = document.getElementById("MidnightMotoristsCanvas");		// canvas stuff
-        this.ctx = this.canvas.getContext("2d");			        // canvas stuff
-
+        this.overlay = false;       // whether a player should be involved
         this.newgame = true;        // whether we just started a new game
         this.points = 0;            // score of the player
-        this.pointcooldown = 10000; // in this.distance
+        this.pointcooldown = 18000; // in this.distance
         this.finished = false;      // whether we crossed the last lap line
-        move.continuous = true;
- 
-        this.rainTheme = Math.random() < 0.2 ? true: false;
-        
-        if(this.rainTheme && !interfaces.menu.active) {
-            this.music = new Audio('MidnightMotorists/audio/SmashingWindshields.mp3');
-            this.music.volume = 0.9;
-            this.music.isAllowed = false;
-            
-            this.sprite = [
-                new Image(),
-                new Image()
-            ]
-            this.sprite[0].src = "MidnightMotorists/sprites/dir0-n.png"
-            this.sprite[1].src = "MidnightMotorists/sprites/dir1-n.png"
-		} else {
-            this.music = new Audio('MidnightMotorists/audio/240BitsPerMile.mp3');
-            this.music.volume = 0.6;
-            this.music.isAllowed = false;
-            
-            this.sprite = [
-                new Image(),
-                new Image()
-            ]
-            this.sprite[0].src = "MidnightMotorists/sprites/dir0.png"
-            this.sprite[1].src = "MidnightMotorists/sprites/dir1.png"
-        }
-        this.sprite[2] = new Image();
-        this.sprite[2].src = "MidnightMotorists/sprites/lap.png";
+        move.smooth = true;
 
-        this.music.autoplay = true;
-        this.music.loop = true;
-		this.window_scale = window.height / 1080;
+        this.random = Math.random()
+        this.rainTheme = this.random < 0.1 ? true: false;
+        
+        if(this.rainTheme) {
+            this.audioBackground = new Audio('MidnightMotorists/audio/SmashingWindshields.mp3');
+			this.audioBackground.volume = 0.9;
+		}
+        else {
+            this.audioBackground = new Audio('MidnightMotorists/audio/240BitsPerMile.mp3');
+			this.audioBackground.volume = 0.6;
+		}
+		this.audioBackground.loop = true;
+        this.audioMenu = new Audio('MidnightMotorists/audio/240BitsPerMile.mp3');
+		this.audioMenu.volume = 0.6;
+        // this.audioMenu.loop = true;
+		this.window_scale = screen.height / 1080;
 
         this.maxspeed = 20;
         this.speedpoint = 0;
@@ -87,6 +89,7 @@ class MidnightMotoristsGame{
 
         // amount of lines you want on screen at the same time
         this.roadlineFrequency = 9;
+        this.roadlines = [];
         this.roadlines = this.createLine(this.roadlineFrequency, 0);
 
         // positions of the lanes for placing the other cars
@@ -102,16 +105,15 @@ class MidnightMotoristsGame{
 
         // contains the places where the laps should be drawn in this.distance. should be multidimensional to set flags
         this.laps = [
-			30000 * this.window_scale, 
-			60000 * this.window_scale, 
-			90000 * this.window_scale, 
-			120000 * this.window_scale
+			[30000 * this.window_scale, 0], 
+			[60000 * this.window_scale, 0], 
+			[90000 * this.window_scale, 0], 
+			[120000 * this.window_scale, 0]
 		];
 
         // we give the roadlanes because it will randomly pick one of the middle ones
         this.getReady = 3600; // 15ms update speed * 60 fps * 4 seconds
-        
-        this.player = new MidnightMotoristsPlayer(300, this.roadlanes, this.window_scale, this.rainTheme, this.ctx);
+        this.player = new MidnightMotoristsPlayer(300, this.roadlanes, this.window_scale, this.rainTheme);
 
         this.maxcars = 20;
         this.cartimer = 0;
@@ -119,47 +121,59 @@ class MidnightMotoristsGame{
         for(var i = 0; i < 3; i++)
             this.generateCar();
 		
-        this.drawBorderLines();
-        
-        this.music.play();
+		this.gamemode = "";
 	}
 	
 	update(){
-        if(this.music.played.length == 0)
-            this.music.play();
+        if(this.overlay){
+            this.audioMenu.play();
+            this.draw_road();
 
-        this.carPositionHandler();
-        this.carGenerationHandler();
-        if(!interfaces.menu.active){
+            for (var i = 0; i < this.cars.length; i++){
+                if(this.cars[i].x + this.cars[i].width < 0 || this.cars[i].x > canvas.width * 1.5)
+                this.cars.splice(i, 1);
+
+                this.cars[i].update();
+            }
+
+            this.cartimer++;
+            if(this.cartimer > 75){
+                this.cartimer = 0;
+                this.generateCar();
+            }
+        } else {
+            this.audioBackground.play();
+            this.draw_road();
             this.player.update();
+
             if(this.getReady >= 0){
                 this.getReady -= 15;
                 this.player.controlsdisabled = true;
 
-                this.ctx.font = "240px Arial";
-                this.ctx.fillStyle ="white";
+                ctx.font = "240px Arial";
+                ctx.fillStyle ="white";
 
                 if(this.getReady > 2400){
-                    this.ctx.lineWidth = 14;
-                    this.ctx.font = "240px Arial";
-                    this.ctx.strokeStyle = "rgb(50, 50, 50)"; 
-                    this.ctx.strokeText("3",window.width / 2 - this.ctx.measureText("3").width / 2,window.height / 2 + 90);
+                    ctx.lineWidth = 14;
+                    ctx.font = "240px Arial";
+                    ctx.strokeStyle = "rgb(50, 50, 50)"; 
+                    ctx.strokeText("3",canvas.width / 2 - 140,canvas.height / 2 + 90);
 
-                    this.ctx.fillText("3",window.width / 2 - this.ctx.measureText("3").width / 2,window.height / 2 + 90);
+                    ctx.fillText("3",canvas.width / 2 - 140,canvas.height / 2 + 90);
                 } else if(this.getReady > 1200){
-                    this.ctx.lineWidth = 14;
-                    this.ctx.font = "240px Arial";
-                    this.ctx.strokeStyle = "rgb(50, 50, 50)"; 
-                    this.ctx.strokeText("2",window.width / 2 - this.ctx.measureText("2").width / 2,window.height / 2 + 90);
+                    ctx.lineWidth = 14;
+                    ctx.font = "240px Arial";
+                    ctx.strokeStyle = "rgb(50, 50, 50)"; 
+                    ctx.strokeText("2",canvas.width / 2 - 140,canvas.height / 2 + 90);
 
-                    this.ctx.fillText("2",window.width / 2 - this.ctx.measureText("2").width / 2,window.height / 2 + 90); 
+                    ctx.fillText("2",canvas.width / 2 - 140,canvas.height / 2 + 90); 
                 } else if(this.getReady > 0){
-                    this.ctx.lineWidth = 14;
-                    this.ctx.font = "240px Arial";
-                    this.ctx.strokeStyle = "rgb(50, 50, 50)"; 
-                    this.ctx.strokeText("1",window.width / 2 - this.ctx.measureText("1").width / 2,window.height / 2 + 90);
+                    ctx.lineWidth = 14;
+                    ctx.font = "240px Arial";
+                    ctx.strokeStyle = "rgb(50, 50, 50)"; 
+                    ctx.strokeText("1",canvas.width / 2 - 140,canvas.height / 2 + 90);
 
-                    this.ctx.fillText("1",window.width / 2 - this.ctx.measureText("1").width / 2,window.height / 2 + 90); 
+                    ctx.fillText("1",canvas.width / 2 - 140,canvas.height / 2 + 90); 
                 }
             } else if(!this.finished){
                 this.distance += this.speed;
@@ -171,7 +185,7 @@ class MidnightMotoristsGame{
 
                 if(this.speed < 15){
                     if(this.speedpoint < 20)
-                        this.speedpoint += 0.008;
+                        this.speedpoint += 0.005;
                 
                     this.speed = this.maxspeed - this.maxspeed * Math.pow(1.5, -this.speedpoint);
                 }else if(this.speed < 20) // this is for the last 50 kmph so it will not take forever
@@ -190,26 +204,27 @@ class MidnightMotoristsGame{
                 } else if(this.speed <= 0){
                     this.speed = 0;
                     this.pointcooldown -= 15;
-                    if(this.music.volume >= 0.002)
-                    this.music.volume -= 0.002;
                     if(this.pointcooldown < 0){
-                        this.music.pause();
-                        new HighScoresInterface("MidnightMotorists", Math.round(this.points));
+                        this.audioBackground.pause();
+                        loadHighscores("Midnight Motorists", Math.round(this.points));
                     }
                 }
 
                 this.player.kmph = this.speed * 10 < 199.5 ? this.speed * 10 : 200;
 
-                this.ctx.lineWidth = 14;
-                this.ctx.font = "120px Arial";
-                this.ctx.strokeStyle = "rgb(50, 50, 50)"; 
-                this.ctx.strokeText("FINISHED",window.width / 2 - this.ctx.measureText("FINISHED").width / 2,window.height / 2 + 45);
+                ctx.lineWidth = 14;
+                ctx.font = "120px Arial";
+                ctx.strokeStyle = "rgb(50, 50, 50)"; 
+                ctx.strokeText("FINISHED",canvas.width / 2 - 300,canvas.height / 2 + 45);
 
-                this.ctx.lineWidth = 4;
-                this.ctx.font = "120px Arial";
-                this.ctx.fillStyle ="white";
-                this.ctx.fillText("FINISHED",window.width / 2 - this.ctx.measureText("FINISHED").width / 2,window.height / 2 + 45);
+                ctx.lineWidth = 4;
+                ctx.font = "120px Arial";
+                ctx.fillStyle ="white";
+                ctx.fillText("FINISHED",canvas.width / 2 - 300,canvas.height / 2 + 45);
             }
+
+            this.carGenerationHandler();
+            this.carPositionHandler();
 
             if(this.rainTheme){
                 if(this.rainbool){
@@ -231,29 +246,25 @@ class MidnightMotoristsGame{
                 } 
             }
 
-            this.ctx.drawImage(this.rainImage, 0,0, window.width, window.height);
+            ctx.drawImage(this.rainImage, 0,0, canvas.width, canvas.height);
 
-            this.roadlinesShift(-this.speed);
+            this.roadlinesShift(this.speed);
 
-            this.ctx.font = "30px Arial";
-            this.ctx.fillStyle ="white";
-            this.ctx.fillText(Math.round(this.points),window.width - 100,100); 
-        }   
+            ctx.font = "30px Arial";
+            ctx.fillStyle ="white";
+            ctx.fillText(Math.round(this.points),canvas.width - 100,100); 
+        }
     }
     
     carPositionHandler(){
-        this.ctx.clearRect(0,0,this.canvas.width, this.canvas.height)
         // if we touch an other car
-        for (let i = this.cars.length - 1; i >= 0; i--){
-            if(this.cars[i].x + this.cars[i].width * 2 < 0 || this.cars[i].x - this.cars[i].width > window.width){
+        for (var i = 0; i < this.cars.length; i++){
+            if(this.cars[i].x + this.cars[i].width < 0)
                 this.cars.splice(i, 1);
-                continue;
-            }
 
             this.cars[i].x += this.cars[i].speed - this.speed;
             this.cars[i].update();
 
-            if(!interfaces.menu.active)
             if(!(this.player.y - this.player.height / 2 > this.cars[i].y + this.cars[i].height / 2 || 
                  this.player.y + this.player.height / 2 < this.cars[i].y - this.cars[i].height / 2||
                  this.player.x                          > this.cars[i].x + this.cars[i].width ||
@@ -268,51 +279,96 @@ class MidnightMotoristsGame{
                         this.pointcooldown = 7200;
             }
         }
-
-        // draw a lap line / finish line
-        if(!this.finished){
-            if(this.distance + this.canvas.width > this.laps[this.player.lap]){
-                this.ctx.drawImage(this.sprite[2], this.laps[this.player.lap] - this.distance, 20, this.sprite[2].width, window.height - 20);
-                this.lapTimer = 100;
-            } else if(this.distance <= this.laps[this.player.lap] && this.distance > this.laps[this.player.lap - 1]){
-                if(this.lapTimer > 0){
-                    this.cars = [];
-                    this.lapTimer--;
-                    this.ctx.lineWidth = 14;
-                    this.ctx.font = "240px Arial";
-                    this.ctx.strokeStyle = "rgb(50, 50, 50)"; 
-                    this.ctx.strokeText("Lap " + (this.player.lap + 1),window.width / 2 - this.ctx.measureText("Lap " + (this.player.lap + 1)).width / 2,window.height / 2 + 90);
-
-                    this.ctx.fillText("Lap " + (this.player.lap + 1),window.width / 2 - this.ctx.measureText("Lap " + (this.player.lap + 1)).width / 2,window.height / 2 + 90); 
-                }
-            }
-        }else 
-            this.cars = [];
     }
 
     carGenerationHandler(){
-        for(var l = this.player.lap; l < this.laps.length; l++){
-            if(this.distance + this.player.x + this.player.width > this.laps[l]){
-                if(l + 1 >= this.laps.length){
+        for(var l = this.player.lap; l < this.laps.length; l += 1){
+            if(this.distance + this.player.x + this.player.width > this.laps[l][0]){
+                if(l + 1 == this.laps.length){
                     this.finished = true; 
                     this.cartimer = 0; 
+                    this.laps[this.laps.length - 1][1] = 1;
                     break;
                 }
 
+                if(this.player.lap < l + 1){
+                    this.cars = [];
+                    this.cartimer = 0;
+
+                    for(var i = 0; i < 5; i++)
+                        this.generateCar();
+                }    
                 this.player.lap = l + 1;  
             }
         }
 
         // check if we should generate a new car
-        var oldlapdistance = typeof this.laps[this.player.lap - 1] == "undefined" ? 0 : this.laps[this.player.lap - 1];
-        var chance = this.cartimer * 0.035 * (1 - this.cars.length / this.maxcars) * (1 + 4 * this.player.lap) * ((this.distance + this.player.x + this.player.width - oldlapdistance) / (this.laps[this.player.lap] - oldlapdistance));
-
+        var oldlapdistance = typeof this.laps[this.player.lap - 1] == "undefined" ? 0 : this.laps[this.player.lap - 1][0];
+        var chance = this.cartimer * 0.0025 * (1 - this.cars.length / this.maxcars) * (1 + 0.65 * this.player.lap) * ((this.distance + this.player.x + this.player.width - oldlapdistance) / (this.laps[this.player.lap][0] - oldlapdistance)) * 7.5 * this.window_scale;
         if(Math.random() < chance){
             this.cartimer = 0;
             this.generateCar();
         }
         this.cartimer++;
     }
+    
+    draw_road(){
+        // stationary lines
+        // top
+        this.drawLine(0, canvas.height / 36, canvas.width, canvas.height / 36, 50, 7 * this.window_scale);
+        this.drawLine(0, canvas.height / 25, canvas.width, canvas.height / 25, 255, 14 * this.window_scale);
+        this.drawLine(0, canvas.height / 19.5, canvas.width, canvas.height / 19.5, 50, 7 * this.window_scale);
+
+        // middle
+        this.drawLine(0, canvas.height / 2.049, canvas.width, canvas.height / 2.049, 50, 7 * this.window_scale);
+        this.drawLine(0, canvas.height / 2, canvas.width, canvas.height / 2, 255, 14 * this.window_scale);
+        this.drawLine(0, canvas.height / 1.953, canvas.width, canvas.height / 1.953, 50, 7 * this.window_scale);
+       
+
+        // bottom
+        this.drawLine(0, canvas.height / 1.028, canvas.width, canvas.height / 1.028, 50, 7);
+        this.drawLine(0, canvas.height / 1.040, canvas.width, canvas.height / 1.040, 255, 14);
+        this.drawLine(0, canvas.height / 1.053, canvas.width, canvas.height / 1.053, 50, 7);
+
+        // dotted lines
+        for(var i = 0; i < this.roadlines.length; i++){
+            // top lines
+            // horizontal white lines
+            this.drawLine(this.roadlines[i][0] + 9, canvas.height / 4 + 14, this.roadlines[i][1] - 9, canvas.height / 4 + 14, 255, 14 * this.window_scale);
+
+            // horizontal grey lines
+            this.drawLine(this.roadlines[i][0], canvas.height / 4.2 + 14, this.roadlines[i][1], canvas.height / 4.2 + 14, 50, 7 * this.window_scale);
+            this.drawLine(this.roadlines[i][0], canvas.height / 3.82 + 14, this.roadlines[i][1], canvas.height / 3.82 + 14, 50, 7 * this.window_scale);
+
+            // vertical filler
+            this.drawLine(this.roadlines[i][0] + 3.5, canvas.height / 4.2 + 14, this.roadlines[i][0] + 3.5, canvas.height / 3.82 + 14, 50, 7 * this.window_scale);
+            this.drawLine(this.roadlines[i][1] - 3.5, canvas.height / 4.2 + 14, this.roadlines[i][1] - 3.5, canvas.height / 3.82 + 14, 50, 7 * this.window_scale);
+
+
+            // bottom lines
+            // horizontal white lines
+            this.drawLine(this.roadlines[i][0] + 9, canvas.height / 1.333 - 14, this.roadlines[i][1] - 9, canvas.height / 1.333 - 14, 255, 14 * this.window_scale);
+
+            // horizontal grey lines
+            this.drawLine(this.roadlines[i][0], canvas.height / 1.354 - 14, this.roadlines[i][1], canvas.height / 1.354 - 14, 50, 7 * this.window_scale);
+            this.drawLine(this.roadlines[i][0], canvas.height / 1.313 - 14, this.roadlines[i][1], canvas.height / 1.313 - 14, 50, 7 * this.window_scale);
+
+            // vertical filler
+            this.drawLine(this.roadlines[i][0] + 3.5, canvas.height / 1.354 - 14, this.roadlines[i][0] + 3.5, canvas.height / 1.313 - 14, 50, 7 * this.window_scale);
+            this.drawLine(this.roadlines[i][1] - 3.5, canvas.height / 1.354 - 14, this.roadlines[i][1] - 3.5, canvas.height / 1.313 - 14, 50, 7 * this.window_scale);
+
+        }
+
+
+        for(var d = 0; d < this.laps.length; d++){
+            if(this.distance < this.laps[d][0] && this.laps[d][1] == 0){
+                this.sprite = new Image();
+                this.sprite.src = "MidnightMotorists/sprites/lap.png";
+                ctx.drawImage(this.sprite, this.laps[d][0] - this.distance, 50);
+            }
+        }
+    }
+
 	generateCar(){
         var dir = Math.round(Math.random());
         var roadlane = dir == 0 ? Math.round(Math.random() * 3) : Math.round(Math.random() * 3) + 4; // 0 is an option as well
@@ -321,11 +377,11 @@ class MidnightMotoristsGame{
             while(roadlane == this.player.lane)
                 roadlane = dir == 0 ? Math.round(Math.random() * 3) : Math.round(Math.random() * 3) + 4; // 0 is an option as well
 
-        var xpos = dir == 0 ? window.width : 0 - 104; // car sprite width
-        var speed = dir == 0 ? -(1.8 - Math.random()) : 1.8 - Math.random(); 
-        var x = speed < this.speed ? window.width + 20 : xpos;
+        var speed = 2.5 - Math.random(); 
+        var xpos = dir == 0 ? canvas.width : 0 - 104; // car sprite width
+        var x = speed < this.speed ? canvas.width : xpos;
 
-        this.cars.push(new MidnightMotoristsCar(x, this.roadlanes[roadlane], this.sprite[dir], speed,  this.window_scale, this.ctx));
+        this.cars.push(new MidnightMotoristsCar(x, this.roadlanes[roadlane], dir, speed,  this.window_scale, this.rainTheme));
     }
 
     roadlinesShift(amountX){
@@ -334,15 +390,14 @@ class MidnightMotoristsGame{
                 this.roadlines.splice(0,1);
                 continue;
             }
-            this.roadlines[i][0] += amountX;
-            this.roadlines[i][1] += amountX;   
+            this.roadlines[i][0] -= amountX;
+            this.roadlines[i][1] -= amountX;   
             
-            if(this.roadlines[i][0] <= 0 && !(this.roadlines[this.roadlines.length - 1][1] > window.width * 1.5)){
+            if(this.roadlines[i][0] <= 0 && !(this.roadlines[this.roadlines.length - 1][1] > canvas.width * 1.5)){
                 var newdottedline = this.createLine(this.roadlineFrequency, this.roadlines[this.roadlines.length - 1][1], 1);
                 this.roadlines.push(newdottedline[0]);
             }
         }
-        this.draw_dotted_lines();
     }
 
     /**
@@ -376,7 +431,7 @@ class MidnightMotoristsGame{
         return ret;
     }
     
-    drawLine(x1, y1, x2, y2, opacity, lineWidth, ctx){
+    drawLine(x1, y1, x2, y2, opacity, lineWidth){
         var color = opacity;
         ctx.strokeStyle = "rgb("+ color + "," + color + "," + color + ")"; 
 
@@ -388,125 +443,8 @@ class MidnightMotoristsGame{
 		ctx.stroke(); 
     }
 
-    draw_dotted_lines(){
-        this.MidnightMotoristsTopMiddleLineCtx.clearRect(0,0,this.MidnightMotoristsTopMiddleLineCanvas.width, this.MidnightMotoristsTopMiddleLineCanvas.height)
-        this.MidnightMotoristsBottomMiddleLineCtx.clearRect(0,0,this.MidnightMotoristsBottomMiddleLineCanvas.width, this.MidnightMotoristsBottomMiddleLineCanvas.height)
-        // middle
-        for(var i = 0; i < this.roadlines.length; i++){
-            // top lines
-            // horizontal white lines
-            this.drawLine(this.roadlines[i][0] + 9, 18, this.roadlines[i][1] - 9, 18, 255, 14 * this.window_scale, this.MidnightMotoristsTopMiddleLineCtx);
-
-            // horizontal grey lines
-            this.drawLine(this.roadlines[i][0], 5, this.roadlines[i][1], 5, 50, 7 * this.window_scale, this.MidnightMotoristsTopMiddleLineCtx);
-            this.drawLine(this.roadlines[i][0], 31, this.roadlines[i][1], 31, 50, 7 * this.window_scale, this.MidnightMotoristsTopMiddleLineCtx);
-
-            // vertical filler
-            this.drawLine(this.roadlines[i][0] + 3, 5, this.roadlines[i][0] + 3, 31, 50, 7 * this.window_scale, this.MidnightMotoristsTopMiddleLineCtx);
-            this.drawLine(this.roadlines[i][1] - 3, 5, this.roadlines[i][1] - 3, 31, 50, 7 * this.window_scale, this.MidnightMotoristsTopMiddleLineCtx);
-
-
-            // bottom lines
-            // horizontal white lines
-            this.drawLine(this.roadlines[i][0] + 9, 18, this.roadlines[i][1] - 9, 18, 255, 14 * this.window_scale, this.MidnightMotoristsBottomMiddleLineCtx);
-
-            // horizontal grey lines
-            this.drawLine(this.roadlines[i][0], 5, this.roadlines[i][1], 5, 50, 7 * this.window_scale, this.MidnightMotoristsBottomMiddleLineCtx);
-            this.drawLine(this.roadlines[i][0], 31, this.roadlines[i][1], 31, 50, 7 * this.window_scale, this.MidnightMotoristsBottomMiddleLineCtx);
-
-            // vertical filler
-            this.drawLine(this.roadlines[i][0] + 3, 5, this.roadlines[i][0] + 3, 31, 50, 7 * this.window_scale, this.MidnightMotoristsBottomMiddleLineCtx);
-            this.drawLine(this.roadlines[i][1] - 3, 5, this.roadlines[i][1] - 3, 31, 50, 7 * this.window_scale, this.MidnightMotoristsBottomMiddleLineCtx);
-
-        }
-    }
-
-    drawBorderLines(){
-        // the road lanes
-        let MidnightMotoristsTopLine = document.createElement('canvas');
-		MidnightMotoristsTopLine.id = 'MidnightMotoristsTopLine';
-		MidnightMotoristsTopLine.width = window.width;
-		MidnightMotoristsTopLine.height = 40;
-		MidnightMotoristsTopLine.style.top = 20;
-		MidnightMotoristsTopLine.style.left = 0;
-		MidnightMotoristsTopLine.style.position = "absolute";
-		MidnightMotoristsTopLine.style.cursor = "none";
-		document.body.appendChild(MidnightMotoristsTopLine);
-
-		this.MidnightMotoristsTopLineCanvas = document.getElementById("MidnightMotoristsTopLine");		// canvas stuff
-        this.MidnightMotoristsTopLineCtx = this.MidnightMotoristsTopLineCanvas.getContext("2d");			        // canvas stuff
-
-        let MidnightMotoristsMiddleLine = document.createElement('canvas');
-		MidnightMotoristsMiddleLine.id = 'MidnightMotoristsMiddleLine';
-		MidnightMotoristsMiddleLine.width = window.width;
-		MidnightMotoristsMiddleLine.height = 40;
-		MidnightMotoristsMiddleLine.style.top = window.height / 2 - 20;
-		MidnightMotoristsMiddleLine.style.left = 0;
-		MidnightMotoristsMiddleLine.style.position = "absolute";
-		MidnightMotoristsMiddleLine.style.cursor = "none";
-		document.body.appendChild(MidnightMotoristsMiddleLine);
-
-		this.MidnightMotoristsMiddleLineCanvas = document.getElementById("MidnightMotoristsMiddleLine");		// canvas stuff
-        this.MidnightMotoristsMiddleLineCtx = this.MidnightMotoristsMiddleLineCanvas.getContext("2d");			        // canvas stuff
-
-        let MidnightMotoristsBottomLine = document.createElement('canvas');
-		MidnightMotoristsBottomLine.id = 'MidnightMotoristsBottomLine';
-		MidnightMotoristsBottomLine.width = window.width;
-		MidnightMotoristsBottomLine.height = 40;
-		MidnightMotoristsBottomLine.style.top = window.height - 60;
-		MidnightMotoristsBottomLine.style.left = 0;
-		MidnightMotoristsBottomLine.style.position = "absolute";
-		MidnightMotoristsBottomLine.style.cursor = "none";
-		document.body.appendChild(MidnightMotoristsBottomLine);
-
-		this.MidnightMotoristsBottomLineCanvas = document.getElementById("MidnightMotoristsBottomLine");		// canvas stuff
-        this.MidnightMotoristsBottomLineCtx = this.MidnightMotoristsBottomLineCanvas.getContext("2d");			        // canvas stuff
-
-        // top
-        this.drawLine(0, 5, window.width, 5, 50, 7 * this.window_scale, this.MidnightMotoristsTopLineCtx);
-        this.drawLine(0, 18, window.width, 18, 255, 14 * this.window_scale, this.MidnightMotoristsTopLineCtx);
-        this.drawLine(0, 31, window.width, 31, 50, 7 * this.window_scale, this.MidnightMotoristsTopLineCtx);
-
-        // middle
-        this.drawLine(0, 5, window.width, 5, 50, 7 * this.window_scale, this.MidnightMotoristsMiddleLineCtx);
-        this.drawLine(0, 18, window.width, 18, 255, 14 * this.window_scale, this.MidnightMotoristsMiddleLineCtx);
-        this.drawLine(0, 31, window.width, 31, 50, 7 * this.window_scale, this.MidnightMotoristsMiddleLineCtx);
-
-        // bottom
-        this.drawLine(0, 5, window.width, 5, 50, 7 * this.window_scale, this.MidnightMotoristsBottomLineCtx);
-        this.drawLine(0, 18, window.width, 18, 255, 14 * this.window_scale, this.MidnightMotoristsBottomLineCtx);
-        this.drawLine(0, 31, window.width, 31, 50, 7 * this.window_scale, this.MidnightMotoristsBottomLineCtx);
-
-        let MidnightMotoristsTopMiddleLine = document.createElement('canvas');
-		MidnightMotoristsTopMiddleLine.id = 'MidnightMotoristsTopMiddleLine';
-		MidnightMotoristsTopMiddleLine.width = window.width;
-		MidnightMotoristsTopMiddleLine.height = 40;
-		MidnightMotoristsTopMiddleLine.style.top = window.height / 4 - 20;
-		MidnightMotoristsTopMiddleLine.style.left = 0;
-		MidnightMotoristsTopMiddleLine.style.position = "absolute";
-		MidnightMotoristsTopMiddleLine.style.cursor = "none";
-		document.body.appendChild(MidnightMotoristsTopMiddleLine);
-
-		this.MidnightMotoristsTopMiddleLineCanvas = document.getElementById("MidnightMotoristsTopMiddleLine");		// canvas stuff
-        this.MidnightMotoristsTopMiddleLineCtx = this.MidnightMotoristsTopMiddleLineCanvas.getContext("2d");			        // canvas stuff
-        
-        let MidnightMotoristsBottomMiddleLine = document.createElement('canvas');
-		MidnightMotoristsBottomMiddleLine.id = 'MidnightMotoristsBottomMiddleLine';
-		MidnightMotoristsBottomMiddleLine.width = window.width;
-		MidnightMotoristsBottomMiddleLine.height = 40;
-		MidnightMotoristsBottomMiddleLine.style.top = window.height / 2 + window.height / 4 - 40;
-		MidnightMotoristsBottomMiddleLine.style.left = 0;
-		MidnightMotoristsBottomMiddleLine.style.position = "absolute";
-		MidnightMotoristsBottomMiddleLine.style.cursor = "none";
-        document.body.appendChild(MidnightMotoristsBottomMiddleLine);
-
-        this.MidnightMotoristsBottomMiddleLineCanvas = document.getElementById("MidnightMotoristsBottomMiddleLine");		// canvas stuff
-        this.MidnightMotoristsBottomMiddleLineCtx = this.MidnightMotoristsBottomMiddleLineCanvas.getContext("2d");			        // canvas stuff
-        
-        this.draw_dotted_lines();
-    }
-
-    exit(){
-        this.music.pause();
+    quit(){
+        this.audioBackground.pause();
+        this.audioMenu.pause();
     }
 }

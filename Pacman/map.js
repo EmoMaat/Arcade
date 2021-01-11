@@ -1,6 +1,5 @@
 class PacManMap{
-	constructor(window_scale){
-		this.window_scale = window_scale;
+	constructor(){
 		this.scematic_view = false;
 		// the inside is 29 eatable points heigh and 26 wide
 		// and 26 wide
@@ -8,49 +7,6 @@ class PacManMap{
 			collums: 26 + 4, 	// four for the exterior walls
 			rows: 28 + 4		// four for the exterior walls
 		};
-
-		this.settings = {
-			offset_x: window.width / 2 - (900 * window_scale) / 2,
-			offset_y: 0,
-
-			size: 30 * window_scale, 	// = 28
-			thickness: 10,
-			
-			border_thickness:5 * window_scale,
-			color:"white",
-
-			powerup: {
-				color:"white", 											// either HEX or color name
-				size: 7 * window_scale	// = 7, size in px
-			},
-
-			eatable: {
-				color:"white", 				// either HEX or color name
-				size: window.width / 960	// = 2, size in px
-			},
-			
-			debug:{
-				color_flat:"green",
-				color_1corner:"orange",
-				color_3corner:"yellow",
-				color_closed:"purple",
-				color_alone:"red"
-			}
-		};
-
-		// create a canvas containing the options
-		let PacManMap = document.createElement('canvas');
-		PacManMap.id = 'PacManMap';
-		PacManMap.width = window.width;
-		PacManMap.height = window.height;
-		PacManMap.style.left = 0;
-		PacManMap.style.bottom = 0;
-		PacManMap.style.position = "absolute";
-		PacManMap.style.cursor = "none";
-		document.body.appendChild(PacManMap);
-
-		this.canvas = document.getElementById("PacManMap");		// canvas stuff
-		this.ctx = this.canvas.getContext("2d");	// canvas stuff
 		
 		this.walls = [
 			// row 0
@@ -151,8 +107,8 @@ class PacManMap{
 			for(var collum = 0; collum < this.size.collums; collum++){
 
 				var node = {x:collum, y:row, cost:0}; 	// create a node
-				var is_wall = false;					// it only has to be true once
-				var in_space = false;					// cannot add the same thing twice
+				var is_wall = false;			// it only has to be true once
+				var in_space = false;			// cannot add the same thing twice
 				
 				for(var w = 0; w < this.walls.length; w++){
 					if(node.x == this.walls[w].x && node.y == this.walls[w].y)
@@ -234,8 +190,6 @@ class PacManMap{
 			// row 30
 			{x:2, y:30, eaten:false},{x:3, y:30, eaten:false},{x:4, y:30, eaten:false},{x:5, y:30, eaten:false},{x:6, y:30, eaten:false},{x:7, y:30, eaten:false},{x:8, y:30, eaten:false},{x:9, y:30, eaten:false},{x:10, y:30, eaten:false},{x:11, y:30, eaten:false},{x:12, y:30, eaten:false},{x:13, y:30, eaten:false},{x:14, y:30, eaten:false},{x:15, y:30, eaten:false},{x:16, y:30, eaten:false},{x:17, y:30, eaten:false},{x:18, y:30, eaten:false},{x:19, y:30, eaten:false},{x:20, y:30, eaten:false},{x:21, y:30, eaten:false},{x:22, y:30, eaten:false},{x:23, y:30, eaten:false},{x:24, y:30, eaten:false},{x:25, y:30, eaten:false},{x:26, y:30, eaten:false},{x:27, y:30, eaten:false}
 		];
-
-		this.draw();
 	}
 	
 	verifyPositions(){
@@ -273,54 +227,52 @@ class PacManMap{
 		return double_item.length;
 	}
 	
-	draw(){
+	draw(wallSettings){
+
 		// ghost box
-		var scale = this.settings.size / 2 - this.settings.thickness / 2;
-		this.ctx.strokeStyle = this.settings.color;
-		this.ctx.lineWidth = this.settings.border_thickness;
-		this.ctx.beginPath();
+		var scale = wallSettings.size / 2 - wallSettings.thickness / 2;
+		ctx.strokeStyle = wallSettings.color;
+		ctx.lineWidth = wallSettings.border_thickness;
+		ctx.beginPath();
 		
-		this.ctx.rect(this.settings.offset_x + (11 /*this.walls[11].x*/ * this.settings.size + scale),
-			this.settings.offset_y + (13 /*this.walls[13].y*/ * this.settings.size + scale),
-			18 /*this.walls[18].x*/ * this.settings.size - 11 /*this.walls[11].x*/ * this.settings.size + scale,
-			17 /*this.walls[17].y*/ * this.settings.size - 13 /*this.walls[13].y*/ * this.settings.size + scale);
-		this.ctx.rect(this.settings.offset_x + (11 /*this.walls[11].x*/ * this.settings.size + scale * 2),
-			this.settings.offset_y + (13 /*this.walls[13].y*/ * this.settings.size + scale * 2),
-			18 /*this.walls[18].x*/ * this.settings.size - 11 /*this.walls[11].x*/ * this.settings.size - scale,
-			17 /*this.walls[17].y*/ * this.settings.size - 13 /*this.walls[13].y*/ * this.settings.size - scale);
-		this.ctx.rect(this.settings.offset_x + (14 /*this.walls[11].x*/ * this.settings.size),
-			this.settings.offset_y + (13 /*this.walls[13].y*/ * this.settings.size + scale),
-			16 /*this.walls[18].x*/ * this.settings.size - 14 /*this.walls[11].x*/ * this.settings.size,
-			13 /*this.walls[17].y*/ * this.settings.size - 13 /*this.walls[13].y*/ * this.settings.size + scale);
-		this.ctx.stroke();
-		this.ctx.closePath();
+		ctx.rect(11 /*this.walls[11].x*/ * wallSettings.size + scale,
+			13 /*this.walls[13].y*/ * wallSettings.size + scale,
+			18 /*this.walls[18].x*/ * wallSettings.size - 11 /*this.walls[11].x*/ * wallSettings.size + scale,
+			17 /*this.walls[17].y*/ * wallSettings.size - 13 /*this.walls[13].y*/ * wallSettings.size + scale);
+		ctx.rect(11 /*this.walls[11].x*/ * wallSettings.size + scale * 2,
+			13 /*this.walls[13].y*/ * wallSettings.size + scale * 2,
+			18 /*this.walls[18].x*/ * wallSettings.size - 11 /*this.walls[11].x*/ * wallSettings.size - scale,
+			17 /*this.walls[17].y*/ * wallSettings.size - 13 /*this.walls[13].y*/ * wallSettings.size - scale);
+		ctx.rect(14 /*this.walls[11].x*/ * wallSettings.size,
+			13 /*this.walls[13].y*/ * wallSettings.size + scale,
+			16 /*this.walls[18].x*/ * wallSettings.size - 14 /*this.walls[11].x*/ * wallSettings.size,
+			13 /*this.walls[17].y*/ * wallSettings.size - 13 /*this.walls[13].y*/ * wallSettings.size + scale);
+		ctx.stroke();
+		ctx.closePath();
 
-		// entrance
-		this.ctx.beginPath();
-		this.ctx.fillStyle = "black";
-		this.ctx.fillRect(this.settings.offset_x + (14 /*this.walls[11].x*/ * this.settings.size + this.settings.border_thickness / 2),
-			this.settings.offset_y + (13 /*this.walls[13].y*/ * this.settings.size),
-			16 /*this.walls[18].x*/ * this.settings.size - 14 /*this.walls[11].x*/ * this.settings.size - this.settings.border_thickness,
-			13 /*this.walls[17].y*/ * this.settings.size - 13 /*this.walls[13].y*/ * this.settings.size + scale * 3);
-		this.ctx.stroke();	
+		ctx.beginPath();
+		ctx.fillStyle = "black";
+		ctx.fillRect(14 /*this.walls[11].x*/ * wallSettings.size + wallSettings.border_thickness / 2,
+			13 /*this.walls[13].y*/ * wallSettings.size,
+			16 /*this.walls[18].x*/ * wallSettings.size - 14 /*this.walls[11].x*/ * wallSettings.size - wallSettings.border_thickness,
+			13 /*this.walls[17].y*/ * wallSettings.size - 13 /*this.walls[13].y*/ * wallSettings.size + scale * 3);
+		ctx.stroke();	
 
-		this.ctx.closePath();
+		ctx.closePath();
 
-		this.ctx.beginPath();
-		this.ctx.strokeStyle = "white";
-		this.ctx.moveTo(this.settings.offset_x + (14 /*this.walls[14].x*/ * this.settings.size),
-			this.settings.offset_y + (13 /*this.walls[13].y*/ * this.settings.size + scale * 1.5));
-		this.ctx.lineTo(this.settings.offset_x + (16 /*this.walls[16].x*/ * this.settings.size),
-			this.settings.offset_y + (13 /*this.walls[13]*/ * this.settings.size + scale * 1.5));
-		this.ctx.stroke();
+		ctx.beginPath();
+		ctx.strokeStyle = "white";
+		ctx.moveTo(14 /*this.walls[14].x*/ * wallSettings.size, 13/*this.walls[13].y*/ * wallSettings.size + scale * 1.5);
+		ctx.lineTo(16 /*this.walls[16].x*/ * wallSettings.size, 13 /*this.walls[13]*/ * wallSettings.size + scale * 1.5);
+		ctx.stroke();	
 
 		for (var w = 0; w < this.walls.length; w++){
-			this.ctx.beginPath();
+			ctx.beginPath();
 			
-			this.ctx.strokeStyle = this.settings.color;
-			this.ctx.lineWidth = this.settings.border_thickness;
+			ctx.strokeStyle = wallSettings.color;
+			ctx.lineWidth = wallSettings.border_thickness;
 			
-			var scale = this.settings.size / 2 - this.settings.thickness / 2;
+			var scale = wallSettings.size / 2 - wallSettings.thickness / 2;
 			var circleRadius = scale;
 			
 			if(!this.walls[w].hasOwnProperty("nodraw")){
@@ -369,91 +321,91 @@ class PacManMap{
 				// if on left but not a corner
 				if(left_side && !right_side && !bottom_side && !top_side){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_flat; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + ((this.walls[w].y * this.settings.size + scale)), this.settings.thickness, this.settings.thickness);
-						this.ctx.stroke();
+						ctx.fillStyle = wallSettings.debug.color_flat; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
+						ctx.stroke();
 					}
 				
-					this.ctx.moveTo(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size));
-					this.ctx.lineTo(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + ((this.walls[w].y + 1) * this.settings.size));
+					ctx.moveTo(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size);
+					ctx.lineTo(this.walls[w].x * wallSettings.size + scale, (this.walls[w].y + 1) * wallSettings.size);
 				} else 
 				
 				// if on right but not a corner
 				if(!left_side && right_side && !bottom_side && !top_side){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_flat; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
-						this.ctx.stroke();
+						ctx.fillStyle = wallSettings.debug.color_flat; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
+						ctx.stroke();
 					}
 					
-					this.ctx.moveTo(this.settings.offset_x + ((this.walls[w].x + 1) * this.settings.size - scale), this.settings.offset_y + (this.walls[w].y * this.settings.size));
-					this.ctx.lineTo(this.settings.offset_x + ((this.walls[w].x + 1) * this.settings.size - scale), this.settings.offset_y + ((this.walls[w].y + 1) * this.settings.size));
+					ctx.moveTo((this.walls[w].x + 1) * wallSettings.size - scale, this.walls[w].y * wallSettings.size);
+					ctx.lineTo((this.walls[w].x + 1) * wallSettings.size - scale, (this.walls[w].y + 1) * wallSettings.size);
 				} else 
 				
 				// if top but not a corner
 				if(!left_side && !right_side && !bottom_side && top_side){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_flat; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
-						this.ctx.stroke();
+						ctx.fillStyle = wallSettings.debug.color_flat; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
+						ctx.stroke();
 					}
 					
-					this.ctx.moveTo(this.settings.offset_x + (this.walls[w].x * this.settings.size), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale));
-					this.ctx.lineTo(this.settings.offset_x + ((this.walls[w].x + 1) * this.settings.size), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale));
+					ctx.moveTo(this.walls[w].x * wallSettings.size, this.walls[w].y * wallSettings.size + scale);
+					ctx.lineTo((this.walls[w].x + 1) * wallSettings.size, this.walls[w].y * wallSettings.size + scale);
 				} else 
 				
 				// if bottom but not a corner
 				if(!left_side && !right_side && bottom_side && !top_side){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_flat; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+						ctx.fillStyle = wallSettings.debug.color_flat; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					}
 					
-					this.ctx.moveTo(this.settings.offset_x + (this.walls[w].x * this.settings.size), this.settings.offset_y + ((this.walls[w].y + 1) * this.settings.size - scale));
-					this.ctx.lineTo(this.settings.offset_x + ((this.walls[w].x + 1) * this.settings.size), this.settings.offset_y + ((this.walls[w].y + 1) * this.settings.size - scale));
+					ctx.moveTo(this.walls[w].x * wallSettings.size, (this.walls[w].y + 1) * wallSettings.size - scale);
+					ctx.lineTo((this.walls[w].x + 1) * wallSettings.size, (this.walls[w].y + 1) * wallSettings.size - scale);
 				} else 
 				
 				
 				// if top left with 1 corner
 				if(!left_side && !right_side && !bottom_side && !top_side && top_left_corner ){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_1corner; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+						ctx.fillStyle = wallSettings.debug.color_1corner; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					}
 					
-					this.ctx.arc(this.settings.offset_x + (this.walls[w].x * this.settings.size), this.settings.offset_y + (this.walls[w].y * this.settings.size), circleRadius,0*Math.PI,0.5*Math.PI, false);
+					ctx.arc(this.walls[w].x * wallSettings.size, this.walls[w].y * wallSettings.size, circleRadius,0*Math.PI,0.5*Math.PI, false);
 				} else 
 				
 				// if right left with 1 corner
 				if(!left_side && !right_side && !bottom_side && !top_side && top_right_corner ){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_1corner; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+						ctx.fillStyle = wallSettings.debug.color_1corner; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					}
 					
-					this.ctx.arc(this.settings.offset_x + ((this.walls[w].x + 1) * this.settings.size), this.settings.offset_y + (this.walls[w].y * this.settings.size), circleRadius, 1*Math.PI, 0.5*Math.PI, true);
+					ctx.arc((this.walls[w].x + 1) * wallSettings.size, this.walls[w].y * wallSettings.size, circleRadius, 1*Math.PI, 0.5*Math.PI, true);
 				} else 
 				
 				// if bottom left with 1 corner
 				if(!left_side && !right_side && !bottom_side && !top_side && bottom_left_corner ){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_1corner; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
-						this.ctx.stroke();
+						ctx.fillStyle = wallSettings.debug.color_1corner; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
+						ctx.stroke();
 					}
 					
-					this.ctx.arc(this.settings.offset_x + (this.walls[w].x * this.settings.size), this.settings.offset_y + ((this.walls[w].y + 1) * this.settings.size), circleRadius, 0*Math.PI, 1.5*Math.PI, true);
+					ctx.arc(this.walls[w].x * wallSettings.size, (this.walls[w].y + 1) * wallSettings.size, circleRadius, 0*Math.PI, 1.5*Math.PI, true);
 				} else 
 				
 				// if bottom right with 1 corner
 				if(!left_side && !right_side && !bottom_side && !top_side && bottom_right_corner ){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_1corner; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
-						this.ctx.stroke();
+						ctx.fillStyle = wallSettings.debug.color_1corner; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
+						ctx.stroke();
 					}
 					
-					this.ctx.arc(this.settings.offset_x + ((this.walls[w].x + 1) * this.settings.size), this.settings.offset_y + ((this.walls[w].y + 1) * this.settings.size), circleRadius, 1*Math.PI, 1.5*Math.PI, false);
+					ctx.arc((this.walls[w].x + 1) * wallSettings.size, (this.walls[w].y + 1) * wallSettings.size, circleRadius, 1*Math.PI, 1.5*Math.PI, false);
 				} else 
 				
 				
@@ -461,71 +413,71 @@ class PacManMap{
 				// if top left with 3 corners
 				if(top_left_corner && top_right_corner && bottom_left_corner && !bottom_right_corner ){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_3corner; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+						ctx.fillStyle = wallSettings.debug.color_3corner; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					}
 					
-					this.ctx.arc(this.settings.offset_x + ((this.walls[w].x + 1) * this.settings.size), this.settings.offset_y + ((this.walls[w].y + 1) * this.settings.size), circleRadius + this.settings.thickness,1.5*Math.PI,1*Math.PI, true);
+					ctx.arc((this.walls[w].x + 1) * wallSettings.size, (this.walls[w].y + 1) * wallSettings.size, circleRadius + wallSettings.thickness,1.5*Math.PI,1*Math.PI, true);
 				} else 
 				
 				// if top right with 3 corners
 				if(top_left_corner && top_right_corner && !bottom_left_corner && bottom_right_corner ){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_3corner; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+						ctx.fillStyle = wallSettings.debug.color_3corner; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					}
 					
-					this.ctx.arc(this.settings.offset_x + (this.walls[w].x * this.settings.size), this.settings.offset_y + ((this.walls[w].y + 1) * this.settings.size), circleRadius + this.settings.thickness,0*Math.PI,1.5*Math.PI, true);
+					ctx.arc(this.walls[w].x * wallSettings.size, (this.walls[w].y + 1) * wallSettings.size, circleRadius + wallSettings.thickness,0*Math.PI,1.5*Math.PI, true);
 				} else 
 				
 				// if bottom left with 3 corners
 				if(top_left_corner && !top_right_corner && bottom_left_corner && bottom_right_corner ){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_3corner; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+						ctx.fillStyle = wallSettings.debug.color_3corner; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					}
 					
-					this.ctx.arc(this.settings.offset_x + ((this.walls[w].x + 1) * this.settings.size), this.settings.offset_y + (this.walls[w].y * this.settings.size), circleRadius + this.settings.thickness,0.5*Math.PI,1*Math.PI, false);
+					ctx.arc((this.walls[w].x + 1) * wallSettings.size, this.walls[w].y * wallSettings.size, circleRadius + wallSettings.thickness,0.5*Math.PI,1*Math.PI, false);
 				} else
 				
 				// if bottom right with 3 corners
 				if(!top_left_corner && top_right_corner && bottom_left_corner && bottom_right_corner ){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_3corner; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+						ctx.fillStyle = wallSettings.debug.color_3corner; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					}
 					
-					this.ctx.arc(this.settings.offset_x + (this.walls[w].x * this.settings.size), this.settings.offset_y + (this.walls[w].y * this.settings.size), circleRadius + this.settings.thickness,0*Math.PI,0.5*Math.PI, false);
+					ctx.arc(this.walls[w].x * wallSettings.size, this.walls[w].y * wallSettings.size, circleRadius + wallSettings.thickness,0*Math.PI,0.5*Math.PI, false);
 				} else 
 				
 				// if no corners but closed from all sides
 				if(!left_side && !right_side && !bottom_side && !top_side
 					&& !top_left_corner && !top_right_corner && !bottom_left_corner && !bottom_right_corner){
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_closed; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+						ctx.fillStyle = wallSettings.debug.color_closed; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					}
 				} else 
 				
 				// if not surrounded
 				{
 					if(this.scematic_view){
-						this.ctx.fillStyle = this.settings.debug.color_alone; 
-						this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+						ctx.fillStyle = wallSettings.debug.color_alone; 
+						ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					}
 				}
 									
-				this.ctx.stroke();
+				ctx.stroke();
 			} else {
 				if(this.scematic_view){
-					this.ctx.fillStyle = this.settings.debug.color_alone; 
-					this.ctx.strokeStyle = "yellow"; 
-					this.ctx.lineWidth = 3;
-					this.ctx.fillRect(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale), this.settings.thickness, this.settings.thickness);
+					ctx.fillStyle = wallSettings.debug.color_alone; 
+					ctx.strokeStyle = "yellow"; 
+					ctx.lineWidth = 3;
+					ctx.fillRect(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale, wallSettings.thickness, wallSettings.thickness);
 					
-					this.ctx.moveTo(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale));
-					this.ctx.lineTo(this.settings.offset_x + (this.walls[w].x * this.settings.size + scale * 2), this.settings.offset_y + (this.walls[w].y * this.settings.size + scale * 2));
-					this.ctx.stroke();
+					ctx.moveTo(this.walls[w].x * wallSettings.size + scale, this.walls[w].y * wallSettings.size + scale);
+					ctx.lineTo(this.walls[w].x * wallSettings.size + scale * 2, this.walls[w].y * wallSettings.size + scale * 2);
+					ctx.stroke();
 				}
 			}
 		}

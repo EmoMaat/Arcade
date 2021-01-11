@@ -1,5 +1,5 @@
 class MidnightMotoristsPlayer{
-    constructor(x, roadlanes, window_scale, rainTheme, ctx){
+    constructor(x, roadlanes, window_scale, rainTheme){
         this.roadlanes = roadlanes;
         this.speed = 10;
         this.kmph = 0;
@@ -10,7 +10,6 @@ class MidnightMotoristsPlayer{
         this.angle = 0;
         this.crash = false;
 
-        this.ctx = ctx;
         this.sprite = new Image();
         this.sprite.src = rainTheme ? "MidnightMotorists/sprites/player-n.png" : "MidnightMotorists/sprites/player.png";
 
@@ -23,25 +22,24 @@ class MidnightMotoristsPlayer{
         this.controlsdisabled = false;
 
 		this.window_scale = window_scale;
-        this.height = 77 * this.window_scale;
+        this.height = 73 * this.window_scale;
         this.width = 104 * this.window_scale;
     }
 
     update(){
-        // middle line pushing
-        if(this.y > window.height / 2 - this.width / 3 && this.y < window.height / 2){
+        if(this.y > canvas.height / 2 - this.width / 3 && this.y < canvas.height / 2){
             this.linetimer++;
             if(this.linetimer > 20){
                 this.y--;
             }
-        } else if(this.y >= window.height / 2 && this.y < window.height / 2 + this.width / 3){
+        }else if(this.y >= canvas.height / 2 && this.y < canvas.height / 2 + this.width / 3){
             this.linetimer++;
             if(this.linetimer > 20){
                 this.y++;
             }
         } else if(this.linetimer > 0){
             this.linetimer -= 0.5;
-        }        
+        }
 
         this.keyhandler();
         this.draw();
@@ -60,12 +58,12 @@ class MidnightMotoristsPlayer{
                 }
             }
             if(move.left){
-                if(this.x >= window.width / 64){
+                if(this.x >= canvas.width / 64){
                     this.x -= this.speed;
                 }
             }
             if(move.right){
-                if(this.x <= window.width - this.width - (window.width / 64)){
+                if(this.x <= canvas.width - this.width - (canvas.width / 64)){
                     this.x += this.speed;
                 }
             }
@@ -89,49 +87,62 @@ class MidnightMotoristsPlayer{
                 this.speed = 0;
             }
 
-            this.ctx.save();                                                         // save the rest of the canvas
-            this.ctx.translate(this.x + this.width / 2, this.y);                     // set the rotation point
-            this.ctx.rotate(this.angle);                                             // rotate the image
-            this.ctx.drawImage(this.sprite, -(this.width / 2), -(this.height / 2));  // draw
-            this.ctx.restore();                                                      // restore the rest of the canvas
+            ctx.save();                                                         // save the rest of the canvas
+            ctx.translate(this.x + this.width / 2, this.y);                     // set the rotation point
+            ctx.rotate(this.angle);                                             // rotate the image
+            ctx.drawImage(this.sprite, -(this.width / 2), -(this.height / 2));  // draw
+            ctx.restore();                                                      // restore the rest of the canvas
         } else
-            this.ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
+            ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
 
-        this.ctx.font = "30px Arial";
-        this.ctx.fillStyle ="white";
-        this.ctx.fillText("LAP:   " + (this.lap + 1),10,100); 
-        this.ctx.fillText("KMPH:   " + Math.round(this.kmph),10,150); 
+        ctx.font = "30px Arial";
+        ctx.fillStyle ="white";
+        ctx.fillText("LAP:   " + this.lap,10,100); 
+        ctx.fillText("KMPH:   " + Math.round(this.kmph),10,150); 
     }
 
     drawLine(x1, y1, x2, y2, opacity, lineWidth){
         var color = opacity;
-        this.ctx.strokeStyle = "rgb("+ color + "," + color + "," + color + ")"; 
-        //this.ctx.strokeStyle = "yellow";
+        ctx.strokeStyle = "rgb("+ color + "," + color + "," + color + ")"; 
+        //ctx.strokeStyle = "yellow";
 
-		this.ctx.lineWidth = lineWidth;
-		this.ctx.beginPath();
+		ctx.lineWidth = lineWidth;
+		ctx.beginPath();
 
-        this.ctx.moveTo(x1, y1);
-		this.ctx.lineTo(x2, y2);
-		this.ctx.stroke(); 
+        ctx.moveTo(x1, y1);
+		ctx.lineTo(x2, y2);
+		ctx.stroke(); 
     }
 }
 
 class MidnightMotoristsCar{
-    constructor(x, lane, sprite, speed, window_scale, ctx){
+    constructor(x, lane, direction, speed, window_scale, rainTheme){
         this.x = x; 
         this.y = lane; // y in px, center. SHOULD NOT CHANGE
-        this.sprite = sprite;
-        this.speed = speed;
-
-        this.ctx = ctx;
+            
 		this.window_scale = window_scale;
+        this.sprite = new Image();
+        this.dir = direction;
         
+        if(this.dir == 0){
+            this.sprite.src = rainTheme ? "MidnightMotorists/sprites/dir0-n.png" : "MidnightMotorists/sprites/dir0.png";
+            this.speed = -speed; // going forwards
+        } else {
+            this.sprite.src = rainTheme ? "MidnightMotorists/sprites/dir1-n.png" : "MidnightMotorists/sprites/dir1.png";
+            this.speed = speed; // going backwards
+        }
+
         this.height = 73 * this.window_scale;
         this.width = 104 * this.window_scale;
     }
 
-    update(){        
-        this.ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
+    update(){
+        this.x += this.speed;
+
+        this.draw();
+    }
+
+    draw(){
+        ctx.drawImage(this.sprite, this.x, this.y - this.height / 2, this.sprite.width * this.window_scale, this.sprite.height * this.window_scale);
     }
 }

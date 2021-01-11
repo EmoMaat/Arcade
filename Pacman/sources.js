@@ -5,12 +5,6 @@ var pacmanGhosteaten = new Audio();
 var pacmanReady= new Audio();
 var pacmanBgsound= new Audio();
 
-pacmanReady.addEventListener("ended", function(){
-    pacmanReady.currentTime = 0;
-    pacmanReady.pause();
-    interfaces.game.object.ready.state = true;
-});
-
 //sources
 
 pacmanChomp.src = "PacMan/src/chomp.wav"

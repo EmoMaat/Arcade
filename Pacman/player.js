@@ -1,10 +1,8 @@
 class PacManPlayer{
-    constructor(wall_settings, wall_map, offset, ctx, size = window.width / 128 /* = 15*/){
+    constructor(wallSettings, wallMap, size = canvas.width / 128 /* = 15*/){
         this.x = 14.5;
         this.y = 24;
         this.speed = 0.1;
-        this.offset = offset;
-        this.ctx = ctx;
 		
 		this.eaten = false;
 		this.nodraw = false;
@@ -49,8 +47,8 @@ class PacManPlayer{
 
         this.angle = 3;             // up = 0, right = 1, down = 2, left = 3 
         this.radius = size;
-        this.wall_map = wall_map;
-        this.wall_settings = wall_settings;
+        this.wallMap = wallMap;
+        this.wallSettings = wallSettings;
     }
 
     update(){
@@ -130,9 +128,9 @@ class PacManPlayer{
     }
 
     draw(){
-        this.ctx.fillStyle="black";
+        ctx.fillStyle="black";
         if (this.powered.state == 1){ // go to powered state
-            this.ctx.lineWidth = this.wall_settings.border_thickness - 2 + this.powered.current_size;
+            ctx.lineWidth = this.wallSettings.border_thickness - 2 + this.powered.current_size;
             if(this.powered.current_size < this.powered.size) // expand till 1.5
                 this.powered.current_size += 0.125;
 			
@@ -142,7 +140,7 @@ class PacManPlayer{
 			this.powered.timer--;
 
         } else if (this.powered.state == 2){ // switch between 0 and 1
-            this.ctx.lineWidth = this.wall_settings.border_thickness - 2 + this.powered.current_size;
+            ctx.lineWidth = this.wallSettings.border_thickness - 2 + this.powered.current_size;
 
             // flicker
             if(this.powered.shrinking){
@@ -167,21 +165,21 @@ class PacManPlayer{
             }                 
 
         } else { // default == not in powered state
-            this.ctx.lineWidth = this.wall_settings.border_thickness - 2 + this.powered.current_size;
+            ctx.lineWidth = this.wallSettings.border_thickness - 2 + this.powered.current_size;
             if(this.powered.current_size > 0) // shrink till 0
                 this.powered.current_size -= 0.125;
         }
 
-		var x = this.x + 0.5 + this.offset / this.wall_settings.size;	// position correction
+		var x = this.x + 0.5;	// position correction
 		var y = this.y + 0.5;	// position correction
 
-        this.ctx.beginPath();
+        ctx.beginPath();
 
         // move to the center of pacman
-        this.ctx.moveTo(x * this.wall_settings.size, y * this.wall_settings.size);
+        ctx.moveTo(x * this.wallSettings.size, y * this.wallSettings.size);
 
-        this.ctx.strokeStyle="white";
-        this.ctx.beginPath();
+        ctx.strokeStyle="white";
+        ctx.beginPath();
         // then we draw the outline border
 		
 		// if eaten, pacman should disappear
@@ -208,79 +206,79 @@ class PacManPlayer{
         // draw the border and a line to the middle
         if(this.angle == 0) {
             // draw the circle
-            this.ctx.arc(x * this.wall_settings.size, y * this.wall_settings.size, this.radius, Math.PI * (this.drawing[0].arc1 - this.mouth_angle), Math.PI * (this.drawing[0].arc2 + this.mouth_angle), false); // up
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (this.drawing[0].arc1 - this.mouth_angle), Math.PI * (this.drawing[0].arc2 + this.mouth_angle), false); // up
             
             // 0.08 = graphical correction
             // calculate the position of the gap of the circle
-            var x0 = x * this.wall_settings.size - 0.8 + this.radius * -Math.cos((this.drawing[0].arc1 - this.mouth_angle) * Math.PI);
-            var y0 = y * this.wall_settings.size + 0.8 + this.radius * Math.sin((this.drawing[0].arc2 + this.mouth_angle) * Math.PI);  
+            var x0 = x * this.wallSettings.size - 0.8 + this.radius * -Math.cos((this.drawing[0].arc1 - this.mouth_angle) * Math.PI);
+            var y0 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((this.drawing[0].arc2 + this.mouth_angle) * Math.PI);  
 
-            var x1 = x * this.wall_settings.size + 0.8 + this.radius * Math.cos((this.drawing[0].arc1 - this.mouth_angle) * Math.PI);
-            var y1 = y * this.wall_settings.size + 0.8 + this.radius * Math.sin((this.drawing[0].arc2 + this.mouth_angle) * Math.PI);  
+            var x1 = x * this.wallSettings.size + 0.8 + this.radius * Math.cos((this.drawing[0].arc1 - this.mouth_angle) * Math.PI);
+            var y1 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((this.drawing[0].arc2 + this.mouth_angle) * Math.PI);  
 
             // draw the lines
-            this.ctx.moveTo(x0, y0);
-            this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size);
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
 
-            this.ctx.moveTo(x1, y1);
-            this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size);
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
 			
         } else if(this.angle == 1) {
-            this.ctx.arc(x * this.wall_settings.size, y * this.wall_settings.size, this.radius, Math.PI * (this.drawing[1].arc1 - this.mouth_angle), Math.PI * (this.drawing[1].arc2 + this.mouth_angle), false); // right
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (this.drawing[1].arc1 - this.mouth_angle), Math.PI * (this.drawing[1].arc2 + this.mouth_angle), false); // right
         
             // 0.08 = graphical correction
             // calculate the position of the gap of the circle
-            var x0 = x * this.wall_settings.size - 0.8 + this.radius * Math.cos((this.drawing[1].arc1 - this.mouth_angle) * Math.PI);
-            var y0 = y * this.wall_settings.size + 0.8 + this.radius * -Math.sin((this.drawing[1].arc2 + this.mouth_angle) * Math.PI);  
+            var x0 = x * this.wallSettings.size - 0.8 + this.radius * Math.cos((this.drawing[1].arc1 - this.mouth_angle) * Math.PI);
+            var y0 = y * this.wallSettings.size + 0.8 + this.radius * -Math.sin((this.drawing[1].arc2 + this.mouth_angle) * Math.PI);  
 
-            var x1 = x * this.wall_settings.size + 0.8 + this.radius * Math.cos((this.drawing[1].arc1 - this.mouth_angle) * Math.PI);
-            var y1 = y * this.wall_settings.size - 0.8 + this.radius * Math.sin((this.drawing[1].arc2 + this.mouth_angle) * Math.PI);  
+            var x1 = x * this.wallSettings.size + 0.8 + this.radius * Math.cos((this.drawing[1].arc1 - this.mouth_angle) * Math.PI);
+            var y1 = y * this.wallSettings.size - 0.8 + this.radius * Math.sin((this.drawing[1].arc2 + this.mouth_angle) * Math.PI);  
 
             // draw the lines
-            this.ctx.moveTo(x0, y0);
-            this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size);
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
 
-            this.ctx.moveTo(x1, y1);
-            this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size);
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
 
         } else if(this.angle == 2) {
-            this.ctx.arc(x * this.wall_settings.size, y * this.wall_settings.size, this.radius, Math.PI * (this.drawing[2].arc1 - this.mouth_angle), Math.PI * (this.drawing[2].arc2 + this.mouth_angle), false); // down
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (this.drawing[2].arc1 - this.mouth_angle), Math.PI * (this.drawing[2].arc2 + this.mouth_angle), false); // down
         
             // 0.08 = graphical correction
             // calculate the position of the gap of the circle
-            var x0 = x * this.wall_settings.size + 0.8 + this.radius * -Math.cos((this.drawing[2].arc1 - this.mouth_angle) * Math.PI);
-            var y0 = y * this.wall_settings.size + 0.8 + this.radius * Math.sin((this.drawing[2].arc2 + this.mouth_angle) * Math.PI);  
+            var x0 = x * this.wallSettings.size + 0.8 + this.radius * -Math.cos((this.drawing[2].arc1 - this.mouth_angle) * Math.PI);
+            var y0 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((this.drawing[2].arc2 + this.mouth_angle) * Math.PI);  
 
-            var x1 = x * this.wall_settings.size - 0.8 + this.radius * Math.cos((this.drawing[2].arc1 - this.mouth_angle) * Math.PI);
-            var y1 = y * this.wall_settings.size + 0.8 + this.radius * Math.sin((this.drawing[2].arc2 + this.mouth_angle) * Math.PI); 
+            var x1 = x * this.wallSettings.size - 0.8 + this.radius * Math.cos((this.drawing[2].arc1 - this.mouth_angle) * Math.PI);
+            var y1 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((this.drawing[2].arc2 + this.mouth_angle) * Math.PI); 
 
             // draw the lines
-            this.ctx.moveTo(x0, y0);
-            this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size);
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
 
-            this.ctx.moveTo(x1, y1);
-            this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size);
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
 
         } else {
-            this.ctx.arc(x * this.wall_settings.size, y * this.wall_settings.size, this.radius, Math.PI * (this.drawing[3].arc1 - this.mouth_angle), Math.PI * (this.drawing[3].arc2 + this.mouth_angle), false); // left
+            ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI * (this.drawing[3].arc1 - this.mouth_angle), Math.PI * (this.drawing[3].arc2 + this.mouth_angle), false); // left
         
             // 0.08 = graphical correction
             // calculate the position of the gap of the circle
-            var x0 = x * this.wall_settings.size + 0.8 + this.radius * Math.cos((this.drawing[3].arc1 - this.mouth_angle) * Math.PI);
-            var y0 = y * this.wall_settings.size - 0.8 + this.radius * -Math.sin((this.drawing[3].arc2 + this.mouth_angle) * Math.PI);  
+            var x0 = x * this.wallSettings.size + 0.8 + this.radius * Math.cos((this.drawing[3].arc1 - this.mouth_angle) * Math.PI);
+            var y0 = y * this.wallSettings.size - 0.8 + this.radius * -Math.sin((this.drawing[3].arc2 + this.mouth_angle) * Math.PI);  
 
-            var x1 = x * this.wall_settings.size - 0.8 + this.radius * Math.cos((this.drawing[3].arc1 - this.mouth_angle) * Math.PI);
-            var y1 = y * this.wall_settings.size + 0.8 + this.radius * Math.sin((this.drawing[3].arc2 + this.mouth_angle) * Math.PI);  
+            var x1 = x * this.wallSettings.size - 0.8 + this.radius * Math.cos((this.drawing[3].arc1 - this.mouth_angle) * Math.PI);
+            var y1 = y * this.wallSettings.size + 0.8 + this.radius * Math.sin((this.drawing[3].arc2 + this.mouth_angle) * Math.PI);  
 
             // draw the lines
-            this.ctx.moveTo(x0, y0);
-            this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size);
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
 
-            this.ctx.moveTo(x1, y1);
-            this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size);
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size);
         }
 
-        this.ctx.stroke();
+        ctx.stroke();
 
 		if(!this.eaten){
 			// this animates the mouth movement
@@ -310,11 +308,11 @@ class PacManPlayer{
             return false;
         }
 
-        for (let i = 0; i < this.wall_map.length; i++){
+        for (let i = 0; i < this.wallMap.length; i++){
             // if x is positive
 			if(x > 0){
                 if (y == 0){
-                    if(Math.ceil(this.x + x) == this.wall_map[i].x && Math.round(this.y) == this.wall_map[i].y){
+                    if(Math.ceil(this.x + x) == this.wallMap[i].x && Math.round(this.y) == this.wallMap[i].y){
                         return true;
                     }
                 }
@@ -322,7 +320,7 @@ class PacManPlayer{
             // if x is negative
             else if(x < 0){
                 if (y == 0){
-                    if(Math.floor(this.x + x) == this.wall_map[i].x && Math.round(this.y) == this.wall_map[i].y){
+                    if(Math.floor(this.x + x) == this.wallMap[i].x && Math.round(this.y) == this.wallMap[i].y){
                         return true;
                     }
                 }
@@ -330,11 +328,11 @@ class PacManPlayer{
             // if x is 0
             else if (x == 0){
                 if(y > 0){
-                    if(Math.floor(this.x) == this.wall_map[i].x && Math.ceil(this.y + y) == this.wall_map[i].y){
+                    if(Math.floor(this.x) == this.wallMap[i].x && Math.ceil(this.y + y) == this.wallMap[i].y){
                         return true;
                     }
                 } else if (y < 0){
-                    if(Math.floor(this.x) == this.wall_map[i].x && Math.floor(this.y + y) == this.wall_map[i].y){
+                    if(Math.floor(this.x) == this.wallMap[i].x && Math.floor(this.y + y) == this.wallMap[i].y){
                         return true;
                     }
                 }
@@ -345,16 +343,16 @@ class PacManPlayer{
     }
 
     updateOwnNode(){
-        if(this.x + this.speed > this.node.x + 1)
+        if(this.x + this.speed > this.node.x + 1 - 0.015)
             this.node.x += 1;
 
-        if(this.x - this.speed < this.node.x - 1)
+        if(this.x - this.speed < this.node.x - 1 + 0.015)
             this.node.x -= 1;
 
-        if(this.y + this.speed > this.node.y + 1)
+        if(this.y + this.speed > this.node.y + 1 - 0.015)
             this.node.y += 1;
 
-        if(this.y - this.speed < this.node.y - 1)
+        if(this.y - this.speed < this.node.y - 1 + 0.015)
             this.node.y -= 1;
     }
 }

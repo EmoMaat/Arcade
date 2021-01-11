@@ -1,13 +1,14 @@
 class PacManAI{
-	constructor(wall_settings, space_map, intersection_map, tunnel, offset, ctx){
+	constructor(wallSettings, spaceMap, intersectionMap, tunnel, ghosts){
 		this.ghosts = [];
 		this.showPaths = false;
 		this.eatables_eaten = 0;
-		this.wall_settings = wall_settings;
-		this.ctx = ctx;
-		this.stuck = false;						// only used if a while got stuck in a infinite loop and the ai should be rebuilt
+		this.wallSettings = wallSettings;
 
-		this.createAI(wall_settings, space_map, intersection_map, tunnel, offset, ctx);
+		this.ghosts.push(new PacManAI_Oikake(wallSettings, spaceMap, intersectionMap, tunnel));
+		this.ghosts.push(new PacManAI_Machibuse(wallSettings, spaceMap, intersectionMap, tunnel));
+		this.ghosts.push(new PacManAI_Kimagure(wallSettings, spaceMap, intersectionMap, tunnel));
+		this.ghosts.push(new PacManAI_Otoboke(wallSettings, spaceMap, intersectionMap, tunnel));
 
 		this.fleeing = {
 			state: false,
@@ -23,21 +24,22 @@ class PacManAI{
 			state:false
 		}
 
-		this.ghosthouse = {
+		this.ghosts_eaten = [];
+		this.box = {
 			container:[1, 2, 3],
 
 			release(ID){
-				if(ID < interfaces.game.object.ai.ghosts.length && this.container.length != 0)
+				if(ID < pacManGame.ai.ghosts.length && this.container.length != 0)
 					for(var c = 0; c < this.container.length; c++)
 						if(this.container[c] == ID){
-							interfaces.game.object.ai.ghosts[this.container[c]].leaveGhosthouse();
+							pacManGame.ai.ghosts[this.container[c]].leavebox = true;
 							this.container.splice(c, 1);
 						}
 			},
 
 			contain(ID){
-				if(ID < interfaces.game.object.ai.ghosts.length){
-					interfaces.game.object.ai.ghosts[ID].enterGhosthouse();
+				if(ID < pacManGame.ai.ghosts.length){
+					pacManGame.ai.ghosts[ID].enterbox = true;
 					this.container.push(ID);
 				}
 			}
@@ -193,60 +195,84 @@ class PacManAI{
 		
 		this.updateGhostSettings();
 	}
-
-	createAI(wall_settings, space_map, intersection_map, tunnel, offset, ctx){
-		this.ghosts.push(new PacManAI_Shell(wall_settings, space_map, intersection_map, tunnel, 0, offset, ctx));
-		this.ghosts.push(new PacManAI_Shell(wall_settings, space_map, intersection_map, tunnel, 1, offset, ctx));
-		this.ghosts.push(new PacManAI_Shell(wall_settings, space_map, intersection_map, tunnel, 2, offset, ctx));
-		this.ghosts.push(new PacManAI_Shell(wall_settings, space_map, intersection_map, tunnel, 3, offset, ctx));
-	}
 	
 	updateGhostSettings(){
 		for(var i = 0; i < this.ghosts.length; i++){
-			this.ghosts[i].speed.default = Math.round(0.1 * this.speedTable.mode[this.speedTable.current].ghosts.normal * 1000) / 1000; 
-			this.ghosts[i].speed.current = Math.round(0.1 * this.speedTable.mode[this.speedTable.current].ghosts.normal * 1000) / 1000;
+			this.ghosts[i].defspeed = 0.1 * this.speedTable.mode[this.speedTable.current].ghosts.normal; 
+			this.ghosts[i].speed = 0.1 * this.speedTable.mode[this.speedTable.current].ghosts.normal;
+			
+			this.ghosts[i].eaten.speed = 0.3;
+			this.ghosts[i].eaten.blinkrate = 300;
+			this.ghosts[i].eaten.blinkspeed = 15;
 		}
 	}
 
 	update(pacman, ghosts){
-		//console.log(this.fleeing.timer)
-		this.scatterHandler();
-		this.fleeingHandler();
+		// flickering of the ghosts
+		if(this.fleeing.state){ // if the ghosts should be in the fleeing state		
+			if (this.fleeing.timer == 600){ // if we did not touch the timer yet
+				// set all the fleeing states of the ghosts to true
+				for(var i = 0; i < this.ghosts.length; i++)
+					if(!this.ghosts[i].inbox){
+						this.ghosts[i].fleeing = true;
+						this.ghosts[i].speed *= this.speedTable.mode[this.speedTable.current].ghosts.frightend;
+					}
+				
+				// decrease the timer
+				this.fleeing.timer--;
+				
+			} else if(this.fleeing.timer > 0 && this.fleeing.timer < this.fleeing.deftimer * 0.3){
+				if(this.fleeing.flickerbool){ // going on
+					this.fleeing.flickertimer--;
+					if (this.fleeing.flickertimer <= 0){
+						this.fleeing.flickertimer = 0;
+						this.fleeing.flickerbool = false;
+						
+						for(var i = 0; i < this.ghosts.length; i++){
+							if(!this.ghosts[i].inbox && this.ghosts[i].fleeing){
+								this.ghosts[i]._fleeing_animate = this.fleeing.flickerbool;
+							}
+						}
+					}
+				} else { // going off
+					this.fleeing.flickertimer++;
+					if (this.fleeing.flickertimer >= this.fleeing.defflickertimer){
+						this.fleeing.flickertimer = this.fleeing.defflickertimer;
+						this.fleeing.flickerbool = true;
+						
+						for(var i = 0; i < this.ghosts.length; i++){
+							if(!this.ghosts[i].inbox && this.ghosts[i].fleeing){
+								this.ghosts[i]._fleeing_animate = this.fleeing.flickerbool;
+							}
+						}
+					}
+				}  
+				this.fleeing.timer--;
+			} else if(this.fleeing.timer <= 0){ // if the timer is run out
+				this.fleeing.timer = this.fleeing.deftimer;
+				this.fleeing.state = false;
+				
+				for(var i = 0; i < this.ghosts.length; i++){
+					if(!this.ghosts[i].inbox && this.ghosts[i].fleeing){
+						this.ghosts[i].speed = this.ghosts[i].defspeed * this.speedTable.mode[this.speedTable.current].ghosts.normal; // reset the speed to its default
+						this.ghosts[i].fleeing = true;
 
-		// releasing the ghosts
-		if(!this.eatTable.died){
-			for(g = 0; g < this.ghosts.length; g++){
-				if(this.eatables_eaten >= this.eatTable.mode[this.eatTable.current].eat_values[g] && this.ghosts[g].ghosthouse.inside){
-					this.ghosthouse.release(g);
-					break;
+						// the ghosts should turn when coming out of fleeing
+						this.ghosts[i].allow_uturn = true;
+						while(this.ghosts[i].allow_uturn)
+							this.ghosts[i].move();
+						
+						this.ghosts[i].fleeing = false;
+					}
 				}
-			}
-		} else {
-			for(g = 0; g < this.ghosts.length; g++){
-				if(this.eatTable.counter >= this.eatTable.mode[this.eatTable.mode.length - 1][g] && this.ghosts[g].ghosthouse.inside){
-					this.ghosthouse.release(g);
-					break;
-				}
-			}
-		}
-		
-		// update all ghosts
-		for(var g = 0; g < this.ghosts.length; g++){
-			// if the ghost was already eaten but is caught again, release
-			if(this.ghosts[g]._waseaten && this.ghosts[g].ghosthouse.inside){
-				this.ghosthouse.release(g);			// move the AI out of the ghosthouse
-				this.ghosts[g].leaveGhosthouse();	// needs to be called as well for some reason
-			}
+			} else
+				this.fleeing.timer--;
+		} else
 
-			this.ghosts[g].update(pacman, ghosts);
-		}
-	}
-
-	scatterHandler(){
 		// handle the scatter stages
 		if(this.scatterTable.timer == -1) {  // -1 is infinite				
 			for(var g = 0; g < this.ghosts.length; g++)
-					if(!this.ghosts[g].eaten && !this.ghosts[g].ghosthouse.inside)
+					if(!this.ghosts[g].eaten.state && !this.ghosts[g].inbox)
 						this.ghosts[g].scattering = false;
 					
 		} else if(this.scatterTable.timer <= 0){ // if a timer is zero a new one should be placed
@@ -264,217 +290,321 @@ class PacManAI{
 			// if the stage is even, scatter
 			if(this.scatterTable.stage % 2 == 0)
 				for(var g = 0; g < this.ghosts.length; g++)
-					if(!this.ghosts[g].eaten && !this.ghosts[g].ghosthouse.inside)
+					if(!this.ghosts[g].eaten.state && !this.ghosts[g].inbox)
 						this.ghosts[g].scattering = true;
 
 			// else the stage is odd, attack
 			if(this.scatterTable.stage % 2 != 0)
 				for(var g = 0; g < this.ghosts.length; g++)
-					if(!this.ghosts[g].eaten && !this.ghosts[g].ghosthouse.inside)
+					if(!this.ghosts[g].eaten.state && !this.ghosts[g].inbox)
 						this.ghosts[g].scattering = false;
 		}
-	}
-
-	fleeingHandler(){
-		// flickering of the ghosts
-		if(this.fleeing.state){ // if the ghosts should be in the fleeing state		
-			if (this.fleeing.timer == 600){ // if we did not touch the timer yet
-				// set all the fleeing states of the ghosts to true
-				for(var i = 0; i < this.ghosts.length; i++)
-					if(!this.ghosts[i].ghosthouse.inside){
-						this.ghosts[i].fleeing = true;
-						this.ghosts[i].speed.current *= this.speedTable.mode[this.speedTable.current].ghosts.frightend;
-					}
-				
-				// decrease the timer
-				this.fleeing.timer--;
-				
-			} else if(this.fleeing.timer > 0 && this.fleeing.timer < this.fleeing.deftimer * 0.3){
-				if(this.fleeing.flickerbool){ // going on
-					this.fleeing.flickertimer--;
-					if (this.fleeing.flickertimer <= 0){
-						this.fleeing.flickertimer = 0;
-						this.fleeing.flickerbool = false;
-						
-						for(var i = 0; i < this.ghosts.length; i++){
-							if(!this.ghosts[i].ghosthouse.inside && this.ghosts[i].fleeing){
-								this.ghosts[i]._animate_fleeing = this.fleeing.flickerbool;
-							}
-						}
-					}
-				} else { // going off
-					this.fleeing.flickertimer++;
-					if (this.fleeing.flickertimer >= this.fleeing.defflickertimer){
-						this.fleeing.flickertimer = this.fleeing.defflickertimer;
-						this.fleeing.flickerbool = true;
-						
-						for(var i = 0; i < this.ghosts.length; i++){
-							if(!this.ghosts[i].ghosthouse.inside && this.ghosts[i].fleeing){
-								this.ghosts[i]._animate_fleeing = this.fleeing.flickerbool;
-							}
-						}
-					}
-				}  
-				this.fleeing.timer--;
-			} else if(this.fleeing.timer <= 0){ // if the timer is run out
-				this.fleeing.timer = this.fleeing.deftimer;
-				this.fleeing.state = false;
-				
-				for(var i = 0; i < this.ghosts.length; i++){
-					if(!this.ghosts[i].ghosthouse.inside && this.ghosts[i].fleeing){
-						this.ghosts[i].speed.current = this.ghosts[i].speed.default * this.speedTable.mode[this.speedTable.current].ghosts.normal; // reset the speed to its default
-						this.ghosts[i].fleeing = true;
-
-						// the ghosts should turn when coming out of fleeing
-						this.ghosts[i].force_uturn = true;
-						let tries = 0;
-						while(this.ghosts[i].force_uturn){
-							if(tries > 100){
-								this.ai = {};
-								this.createAI();
-								console.log("This while loop got probably stuck in an inifinite loop, and the ai has been rebuilt to prevent a timeout")
-								break;
-							}
-							
-							this.ghosts[i].move();
-							tries++
-						}
-						
-						this.ghosts[i].fleeing = false;
-					}
+		
+		// releasing the ghosts
+		if(!this.eatTable.died){
+			for(g = 0; g < this.ghosts.length; g++){
+				if(this.eatables_eaten >= this.eatTable.mode[this.eatTable.current].eat_values[g] && this.ghosts[g].inbox){
+					this.box.release(g);
+					break;
 				}
-			} else
-				this.fleeing.timer--;
+			}
+		} else {
+			for(g = 0; g < this.ghosts.length; g++){
+				if(this.eatTable.counter >= this.eatTable.mode[this.eatTable.mode.length - 1][g] && this.ghosts[g].inbox){
+					this.box.release(g);
+					break;
+				}
+			}
+		}
+		
+		if(!this.fleeing.state && this.ghosts_eaten.length != 0)
+			this.ghosts_eaten = [];
+		
+		// update all ghosts
+		for(var i = 0; i < this.ghosts.length; i++){
+			this.ghosts[i].update(pacman, ghosts);
+
+			if(this.ghosts[i].fleeing){
+				if(pacman.x == this.ghosts[i].node.x && pacman.y == this.ghosts[i].node.y){
+					this.ghosts[i].eaten.state = true;
+					this.ghosts[i].speed = this.ghosts[i].eaten.speed;
+					this.ghosts[i].allow_uturn = true;
+
+					// when fleeing, if certain conditions are met and allow_uturn is true,
+					// the ai will turn. This means move until allow_uturn is false
+					while(this.ghosts[i].allow_uturn)
+						this.ghosts[i].move();
+
+					this.ghosts[i].fleeing = false;
+					this.box.contain(i);
+
+					this.ghosts_eaten.push(i);
+				}
+			} else if (this.ghosts[i].eaten.state && this.ghosts[i].path.length == 0)
+				this.box.contain(i);
+		
+			// debugging
+			if(this.showPaths){
+				ctx.fillStyle = this.ghosts[i].pathColor;
+				for(var p = 0; p < this.ghosts[i].path.length; p++){
+					ctx.beginPath();
+					ctx.arc(this.ghosts[i].path[p].x * this.wallSettings.size + this.wallSettings.size, this.ghosts[i].path[p].y * this.wallSettings.size + this.wallSettings.size, 5, 0, 2 * Math.PI);
+					ctx.fill(); 
+				}
+			}
 		}
 	}
 }
 
-/**
- * Shell with functions around the real AI
- */
-class PacManAI_Shell{
-	constructor(wall_settings, space_map, intersection_map, tunnel, ghostID, offset, ctx){
-		// ---- init ----
-		this.offset = offset;
-		this.pathGenerator = new PacManPathGenerator(ghostID);
-		this.ID = ghostID;	
-		this.pathColor = this.pathGenerator.GhostBeaviour.pathColor;
-		this.back = 3; 							// up = 0, right = 1, down = 2, left = 3 
-		this.radius = window.width / 128;		// = 15
-		this.ctx = ctx;
+class PacManAI_Oikake{
+	constructor(wallSettings, spaceMap, intersectionMap, tunnel, size = canvas.width / 128 /* = 15*/){
+		this.name = "Oikake";
+		this.pathColor = "red";
+		this.color = 255; 		// only white or grey colors, so only one value
+		this.defspeed = 0;		// globaly set
+		this.speed = 0; 		// 0.022
 
-		this.wall_settings = wall_settings;
-		this.space_map = space_map;
-		this.intersection_map = intersection_map;
-		this.tunnel = tunnel;
-		this.path = [];
-		
-		this.debug = false;
+		this.inbox = false;				// whether the ai is in the box
+		this.leavebox = false;			// if set to true the ai will try to leave the box
+		this.enterbox = false;			// if set to true the ai will try to enter the box
+		this.disablemovement = false;	// disables the ais movement
+		this._customPath = false;
+		this.scattering = false;		// scatter boolean
+		this._fleeing = false; 			// fleeing hidden boolean, getter and setter defined in this class
+		this._fleeing_animate = false;	// whether we should change the ghost' appearance
+		this.allow_uturn = false;		// whether or not the ai may make a uturn
+		// if both are false, the AI will be chasing 
 
-		// ---- location ----
-		this.x = this.pathGenerator.GhostBeaviour.x;
-		this.y = this.pathGenerator.GhostBeaviour.y;
+		this.home = [{x: 27, y: 2}, {x: 26, y: 2}];	// place to go if scatteringing
+		this.target = {x: 0, y: 0}; 				// only used to see if our path still leads us to pacman
+
+		this.x = 14;
+		this.y = 12;
 		this.node = {
 			x:this.x,
 			y:this.y
 		};
 
 		// next node AI will move to
-		this.next_node = {
+		this.target_node = {
 			x:this.x,
 			y:this.y
 		};
 
-		// ---- targeting ----
-		// only used to see if our path still leads us to pacman
-		this.target = {x: 0, y: 0}; 				
+		// box
+		this.box = [
+			{x:11,y:13},
+			{x:18,y:17},
+		];
 
-		// ---- states ----
 		// AI eat variables
+		this.eaten = {
+			state:false,
+			speed:0,		// globaly set
 
-		this._customPath = false;			// whether a custom path is active
-		this._fleeing = this.pathGenerator.GhostBeaviour.insideGhosthouse;
-		this._animate_fleeing = false;		// whether the animation of fleeing should be active
-		this._eaten = false;				// whether the AI is eaten
-		this._waseaten = false;				// whether he was eaten before in this session
-		
-		this.disablemovement = false;		// disables AI movement
-		this.force_uturn = false;			// forces a u-turn
-		this.scattering = false;			// makes the AI scatter
-
-		// speed of the AI
-		this.speed = {
-			current:0,
-			default:0
+			blinkrate:0,	// globaly set
+			blinkcurrent:0, // globaly set
+			blinkspeed:0,	// globaly set
+			blinkbool:true	// true is going on, false is going off
 		}
 
-		// ghost house
-		this.ghosthouse = {
-			inside:this.pathGenerator.GhostBeaviour.insideGhosthouse,
-			intransit:false,
-
-			area:[
-				{x:11,y:13},
-				{x:18,y:17}
-			]
-		};
-
-		this.node_tools = new PacManNodeTools(this.space_map, this.ghosthouse)
-	}
-
-	createAI(){
-		this.ghosts.push(new PacManAI_Shell(this.wall_settings, space_map, intersection_map, tunnel, 0, offset, ctx));
-		this.ghosts.push(new PacManAI_Shell(this.wall_settings, space_map, intersection_map, tunnel, 1, offset, ctx));
-		this.ghosts.push(new PacManAI_Shell(this.wall_settings, space_map, intersection_map, tunnel, 2, offset, ctx));
-		this.ghosts.push(new PacManAI_Shell(this.wall_settings, space_map, intersection_map, tunnel, 3, offset, ctx));
-	}
-
-	update(pacman, ghosts){
-		// if the ghost is in transit
-		if(this.ghosthouse.intransit)
-			this.ghosthouseHandler();
+		this.back = 3; // up = 0, right = 1, down = 2, left = 3 
+		this.radius = size;
 		
-		// else the ghost should update its path
-		else
-			this.generatePath(pacman, ghosts);
-
+		this.wallSettings = wallSettings;
+		this.tunnel = tunnel;
+		this.spaceMap = spaceMap;
+		this.intersectionMap = intersectionMap;
+		this.path = [];
+		
+		this.debug = false;
+	}
+	
+	/**
+	 * 
+	 * @param {Object} pacman position of the player
+	 * @param {Object} ghosts required for Kimagure AI / Inky AI
+	 */
+	update(pacman, ghosts){
+		this.updatePath(pacman);
 		this.move();
-		this.draw();
+		this.draw(this.x, this.y);
 	}
 
-	generatePath(pacman, ghosts){
-		if(!this.fleeing && this.atIntersection())
-			// if scattering, generate a circular path to and around its home
-			if(this.scattering)
-				this.path = this.pathGenerator.scatter(this.node, this.next_node, this.back, this.space_map);
-			else if(!this.stuckInTunnel() && !this.ghosthouse.intransit){
-				this.path = this.pathGenerator.attack(pacman, ghosts, this.path, this.node, this.next_node, this.back, this.space_map, this.node_tools);
+	updatePath(pacman){
+		if(this.leavebox){
+			if(!this.inbox){
+				console.log("already outside the box");
+				this.leavebox = false;
+				return;
 			}
-	}
 
+			this._fleeing = false;
+			this.customPath = {x:14,y:14};
+			if(this.path.length == 0){
+				this.disablemovement = true;
+
+				if(this.y >= 12)
+					this.y -= this.speed;
+				else if(this.y < 12){
+					this.y = 12;
+					this.node.y = 12; this.target_node.y = 12;
+					this.disablemovement = false;
+					this.leavebox = false;
+					this.inbox = false;
+					this.fleeing = false;
+					this._customPath = false;
+				}
+			}
+		} else
+
+		if(this.enterbox){
+			if(this.inbox){
+				console.log("already inside the box");
+				this.enterbox = false;
+				return;
+			}
+
+			this.customPath = {x:14,y:12};
+			if(this.path.length == 0){
+				this.disablemovement = true;
+
+				if(this.y <= 14)
+					this.y += this.speed;
+				else if(this.y > 14){
+					this.y = 14;
+					this.node.y = 14; this.target_node.y = 14;
+					this.disablemovement = false;
+					this.enterbox = false;
+					this._customPath = false;
+					this._fleeing = true;
+					this._fleeing_animate = false;
+					this.inbox = true;
+					this.speed = this.defspeed;
+					this.eaten.state = false;
+				}
+			}
+		} else
+
+		// if the AI is scatteringing
+		if(this.scattering && this.atIntersection()){
+			var checkpath = false;
+		
+			//if not on home ID 1, and our target is not home ID 1, create a path
+			if(this.node.x == this.home[0].x && this.node.y == this.home[0].y && 
+				(this.target.x != this.home[1].x || this.target.y != this.home[1].y)){
+				// set our target so we don't run over this code all the time
+				this.target.x = this.home[1].x; this.target.y = this.home[1].y;
+				checkpath = true;
+
+				// debugging will return the whole class instead of only a path
+				if(this.debug){
+					this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[1].x,y:this.home[1].y},this.spaceMap, "manhattan", this.back, true);
+					this.path = this.PacMan_PathFinding.path;
+				} else
+					this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[1].x,y:this.home[1].y},this.spaceMap, "manhattan", this.back);
+			} else
+
+			// if not on home ID 0, and our target is not home ID 0, create a path
+			if(this.node.x != this.home[0].x && this.node.y != this.home[0].y &&
+				(this.target.x != this.home[0].x || this.target.y != this.home[0].y)){
+				// set our target so we don't run over this code all the time
+				this.target.x = this.home[0].x; this.target.y = this.home[0].y;
+				checkpath = true;
+
+				// debugging will return the whole class instead of only a path
+				if(this.debug){
+					this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[0].x,y:this.home[0].y},this.spaceMap, "manhattan", this.back, true);
+					this.path = this.PacMan_PathFinding.path;
+				} else
+					this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[0].x,y:this.home[0].y},this.spaceMap, "manhattan", this.back);
+			}
+			
+			if(checkpath){
+				// if our node we are already moving towards is not in our path, add it
+				if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+					this.path.reverse(); 				// reverse the path
+					this.path.push(this.target_node); 	// add target_node to the last place
+					this.path.reverse();				// reverse again
+				}
+
+				// if we are already on this.path[0], remove
+				if(this.path[0].x == this.node.x && this.path[0].y == this.node.y){
+					this.path.splice(0,1);
+				}
+			}
+		} else
+
+		if(this.atIntersection()){
+			// if pacman leaves the target tile, calculate a new path to that target tile
+			if((pacman.x != this.target.x || pacman.y != this.target.y) || this.path.length == 0){
+				if(!this.stuckInTunnel() && !this.fleeing && !this.scattering && !this.eaten.state){
+					// debugging will return the whole class instead of only a path
+					if(this.debug){
+						this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:pacman.x,y:pacman.y},this.spaceMap, "manhattan", this.back, true);
+						this.path = this.PacMan_PathFinding.path;
+					} else
+						this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:pacman.x,y:pacman.y},this.spaceMap, "manhattan", this.back);
+
+					// if our node we are already moving towards is not in our path, add it
+					if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+						this.path.reverse(); 				// reverse the path
+						this.path.push(this.target_node); 	// add target_node to the last place
+						this.path.reverse();				// reverse again
+					}
+
+					this.target.x = pacman.x; this.target.y = pacman.y;
+				}
+			}
+		}
+
+		// the eaten state is handeled by the system and not the AI itself
+
+		// fleeing is random at each intersection so we have a complete seperate move function for it
+
+		// show chosen path and examined paths
+		if(this.debug){
+			for(var i = 0; i < this.path.length; i++){
+				ctx.fillStyle = "yellow";
+				ctx.font = "30px Arial";
+				ctx.beginPath();
+				ctx.fillText(this.path[i].h, this.path[i].x * 28 + 9, (this.path[i].y + 0.5) * 28 + 9);
+				ctx.stroke();
+			}
+
+			for(var i = 0; i < this.PacMan_PathFinding.closedset.length; i++){
+				ctx.fillStyle = "yellow";
+				ctx.font = "10px Arial";
+					ctx.beginPath();
+					ctx.fillText(this.PacMan_PathFinding.closedset[i].h,this.PacMan_PathFinding.closedset[i].x * 28 + 9, (this.PacMan_PathFinding.closedset[i].y + 0.5) * 28 + 9);
+					ctx.stroke();
+			}
+		}
+	}
+	
 	move(){
 		// EXPLANATION OF THE MOVE CODE
 		/*
 		if(this.x < this.path[0].x){
-			if(this.x + this.speed.current > this.node.x + 1){	// if our movespeed moves the AI past the target
+			if(this.x + this.speed > this.node.x + 1){	// if our movespeed moves the AI past the target
 				this.x = this.node.x = this.path[0].x;  // update the position to the target
 				if(this.path.length != 0)
 					this.path.splice(0,1);				// remove the target from the path
 
 				this.back = 4;
 			} else if(this.y == Math.round(this.y)){	// if the AI is on a round y line
-				this.x += this.speed.current;					// move the AI
+				this.x += this.speed;					// move the AI
 				this.back = 4;							// set the back of the AI so he can't uturn
-				this.next_node.x = this.node.x + 1; 	// make the target node always one further
+				this.target_node.x = this.node.x + 1; 	// make the target node always one further
 			}
 		}
 
 		// teleporting
 		// target_node must be always one ahead of the AI
 		if(this.x >= 28 && this.y == 15){
-				this.x = 2; this.node.x = 2; this.next_node.x = 3; return false;} 
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
 			else if(this.x <= 1 && this.y == 15){
-				this.x = 27; this.node.x = 27; this.next_node.x = 26; return false;}
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
 		*/
 
 		// just prevent movement
@@ -484,72 +614,72 @@ class PacManAI_Shell{
 		if(this.fleeing){
 			// tunnel teleport part
 			if(this.x >= 28 && this.y == 15){
-				this.x = 2; this.node.x = 2; this.next_node.x = 3; return false;} 
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
 			else if(this.x <= 1 && this.y == 15){
-				this.x = 27; this.node.x = 27; this.next_node.x = 26; return false;}
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
 
 			if(this.back == 3){
-				if(this.x + this.speed.current > this.node.x + 1){
+				if(this.x + this.speed > this.node.x + 1){
 					this.x = this.node.x + 1; 
 					this.node.x += 1;
 					
-					if(this.force_uturn){
+					if(this.allow_uturn){
 						this.back = 1;
-						this.force_uturn = false;
+						this.allow_uturn = false;
 					} else
 						this.back = this.randomDir();
 				} else if(this.y == Math.round(this.y)){
-					this.x += this.speed.current;
-					this.next_node.x = this.node.x + 1;
+					this.x += this.speed;
+					this.target_node.x = this.node.x + 1;
 				}
 			}
 
 			if(this.back == 1){
-				if(this.x - this.speed.current < this.node.x - 1){
+				if(this.x - this.speed < this.node.x - 1){
 					this.x = this.node.x -= 1; 
 					
-					if(this.force_uturn){
+					if(this.allow_uturn){
 						this.back = 3;
-						this.force_uturn = false;
+						this.allow_uturn = false;
 					} else
 						this.back = this.randomDir();
 				} else if(this.y == Math.round(this.y)){
-					this.x -= this.speed.current; 
-					this.next_node.x = this.node.x - 1;
+					this.x -= this.speed; 
+					this.target_node.x = this.node.x - 1;
 				}
 			}
 
 			if(this.back == 0){
-				if(this.y + this.speed.current > this.node.y + 1){
+				if(this.y + this.speed > this.node.y + 1){
 					this.y = this.node.y += 1; 
 					
-					if(this.force_uturn){
+					if(this.allow_uturn){
 						this.back = 2;
-						this.force_uturn = false;
+						this.allow_uturn = false;
 					} else
 						this.back = this.randomDir();
 				} else if(this.x == Math.round(this.x)){
-					this.y += this.speed.current; 
-					this.next_node.y = this.node.y + 1;
+					this.y += this.speed; 
+					this.target_node.y = this.node.y + 1;
 				}
 			}
 
 			if(this.back == 2){
-				if(this.y - this.speed.current < this.node.y - 1){
+				if(this.y - this.speed < this.node.y - 1){
 					this.y = this.node.y -= 1; 
 					
-					if(this.force_uturn){
+					if(this.allow_uturn){
 						this.back = 0;
-						this.force_uturn = false;
+						this.allow_uturn = false;
 					} else
 						this.back = this.randomDir();
 				} else if(this.x == Math.round(this.x)){
-					this.y -= this.speed.current;
-					this.next_node.y = this.node.y - 1;
+					this.y -= this.speed;
+					this.target_node.y = this.node.y - 1;
 				}	
 			}
 
-			if(this.x == this.next_node.x || this.y == this.next_node.y){
+			if(this.x == this.target_node.x || this.y == this.target_node.y){
 				// calculate the AI nodes
 				if(this.back == 0)
 					this.node.y = Math.floor(this.y);
@@ -568,46 +698,46 @@ class PacManAI_Shell{
 		// if following a created path
 		if(this.path[0] != undefined){
 			if(this.x < this.path[0].x){
-				if(this.x + this.speed.current > this.node.x + 1){
+				if(this.x + this.speed > this.node.x + 1){
 					this.x = this.path[0].x;  			
 					this.back = 3;
 				} else if(this.y == Math.round(this.y)){
-					this.x += this.speed.current;				
+					this.x += this.speed;				
 					this.back = 3;						
-					this.next_node.x = this.node.x + 1;
+					this.target_node.x = this.node.x + 1;
 				}
 			} else
 			
 			if(this.x > this.path[0].x){
-				if(this.x - this.speed.current < this.node.x - 1){
+				if(this.x - this.speed < this.node.x - 1){
 					this.x = this.path[0].x; 
 					this.back = 1;
 				} else if(this.y == Math.round(this.y)){
-					this.x -= this.speed.current; 
+					this.x -= this.speed; 
 					this.back = 1;
-					this.next_node.x = this.node.x - 1;
+					this.target_node.x = this.node.x - 1;
 				}	
 			} else
 
 			if(this.y < this.path[0].y){
-				if(this.y + this.speed.current > this.node.y + 1){
+				if(this.y + this.speed > this.node.y + 1){
 					this.y = this.path[0].y; 
 					this.back = 0;	
 				} else if(this.x == Math.round(this.x)){
-					this.y += this.speed.current; 
+					this.y += this.speed; 
 					this.back = 0;
-					this.next_node.y = this.node.y + 1;
+					this.target_node.y = this.node.y + 1;
 				}
 			} else
 			
 			if(this.y > this.path[0].y){
-				if(this.y - this.speed.current < this.node.y - 1){
+				if(this.y - this.speed < this.node.y - 1){
 					this.y = this.path[0].y; 
 					this.back = 2;
 				} else if(this.x == Math.round(this.x)){
-					this.y -= this.speed.current;
+					this.y -= this.speed;
 					this.back = 2;
-					this.next_node.y = this.node.y - 1;
+					this.target_node.y = this.node.y - 1;
 				}	
 			}
 
@@ -632,200 +762,105 @@ class PacManAI_Shell{
 				} 
 			}
 		}	
-	
 	}
 
-	draw(x = this.x, y = this.y){
-		if(this.debug){
-			this.ctx.fillStyle = this.pathColor;
-			for(var p = 0; p < this.path.length; p++){
-				this.ctx.beginPath();
-				this.ctx.arc(this.path[p].x * this.wall_settings.size + this.wall_settings.size + this.offset, this.path[p].y * this.wall_settings.size + this.wall_settings.size, 5, 0, 2 * Math.PI);
-				this.ctx.fill(); 
-			}
-		}
+	draw(x, y){
+		if(this.eaten.state){
+			if(this.eaten.blinkbool){ // going on
+				this.eaten.blinkcurrent -= this.eaten.blinkspeed;
+				if (this.eaten.blinkcurrent <= 0){
+					this.eaten.blinkcurrent = 0;
+					this.eaten.blinkbool = false;
+				}
+			} else { // going off
+				this.eaten.blinkcurrent += this.eaten.blinkspeed;
+				if (this.eaten.blinkcurrent >= this.eaten.blinkrate){
+					this.eaten.blinkcurrent = this.eaten.blinkrate;
+					this.eaten.blinkbool = true;
+				}
+			}   
 
-		if(this.eaten){
-			this.ctx.strokeStyle="#222";
+			var color = (this.eaten.blinkcurrent / this.eaten.blinkrate) * this.color;
+			ctx.strokeStyle="rgb("+ color + "," + color + "," + color + ")"; 
 		} else
-			this.ctx.strokeStyle="white"; 
+			ctx.strokeStyle="rgb("+ this.color + "," + this.color + "," + this.color + ")"; 
 		
-		this.ctx.lineWidth = 3;
-
-		x += this.offset / this.wall_settings.size;
+		ctx.lineWidth = this.wallSettings.border_thickness - 2;
 		
 		x += 0.5;	// position correction
 		y += 0.5;	// position correction
 
-
-		this.ctx.beginPath();
-		this.ctx.arc(x * this.wall_settings.size, y * this.wall_settings.size, this.radius, Math.PI, 0, false);
-		this.ctx.moveTo(x * this.wall_settings.size - this.radius, y * this.wall_settings.size);
+		ctx.beginPath();
+		ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI, 0, false);
+		ctx.moveTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size);
 
 		// LEGS
-		if (this._animate_fleeing){
-			this.ctx.lineTo(x * this.wall_settings.size - this.radius, y * this.wall_settings.size + this.radius-this.radius / 4);
-			this.ctx.lineTo(x * this.wall_settings.size - this.radius + this.radius / 3, y * this.wall_settings.size + this.radius);
-			this.ctx.lineTo(x * this.wall_settings.size - this.radius + (this.radius / 3) * 2, y * this.wall_settings.size + this.radius-this.radius / 4);
-			this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size + this.radius);
-			this.ctx.lineTo(x * this.wall_settings.size + this.radius/3, y * this.wall_settings.size + this.radius - this.radius / 4);	
-			this.ctx.lineTo(x * this.wall_settings.size + (this.radius / 3) * 2, y * this.wall_settings.size + this.radius);
-			this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size + this.radius - this.radius / 4);
-			this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size);
+		if (this._fleeing_animate){
+			ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius-this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius-this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius/3, y * this.wallSettings.size + this.radius - this.radius / 4);	
+			ctx.lineTo(x * this.wallSettings.size + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
 		} else {
-			this.ctx.lineTo(x * this.wall_settings.size - this.radius, y * this.wall_settings.size + this.radius);
-			this.ctx.lineTo(x * this.wall_settings.size - this.radius + this.radius / 3, y * this.wall_settings.size + this.radius - this.radius / 4);
-			this.ctx.lineTo(x * this.wall_settings.size - this.radius + (this.radius / 3) * 2, y * this.wall_settings.size + this.radius);
-			this.ctx.lineTo(x * this.wall_settings.size, y * this.wall_settings.size + this.radius - this.radius / 4);
-			this.ctx.lineTo(x * this.wall_settings.size + this.radius / 3, y * this.wall_settings.size + this.radius);
-			this.ctx.lineTo(x * this.wall_settings.size + (this.radius / 3) * 2, y * this.wall_settings.size + this.radius - this.radius / 4);
-			this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size + this.radius);
-			this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size);
+			ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius / 3, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
 		}
 
-		this.ctx.moveTo(x * this.wall_settings.size - this.radius, y * this.wall_settings.size);
-		this.ctx.lineTo(x * this.wall_settings.size + this.radius / 3, y * this.wall_settings.size - this.radius);
+		ctx.moveTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size);
+		ctx.lineTo(x * this.wallSettings.size + this.radius / 3, y * this.wallSettings.size - this.radius);
 		
-		this.ctx.moveTo(x * this.wall_settings.size - this.radius, y * this.wall_settings.size + this.radius / 2);
-		this.ctx.lineTo(x * this.wall_settings.size + this.radius / 1.5, y * this.wall_settings.size - this.radius / 1.35);
+		ctx.moveTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius / 2);
+		ctx.lineTo(x * this.wallSettings.size + this.radius / 1.5, y * this.wallSettings.size - this.radius / 1.35);
 
-		this.ctx.moveTo(x * this.wall_settings.size - this.radius / 1.1, y * this.wall_settings.size + this.radius / 1.1);
-		this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size - this.radius / 2);
+		ctx.moveTo(x * this.wallSettings.size - this.radius / 1.1, y * this.wallSettings.size + this.radius / 1.1);
+		ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size - this.radius / 2);
 
-		this.ctx.moveTo(x * this.wall_settings.size - this.radius / 7, y * this.wall_settings.size + this.radius - this.radius / 7);
-		this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size); // just a small number
+		ctx.moveTo(x * this.wallSettings.size - this.radius / 7, y * this.wallSettings.size + this.radius - this.radius / 7);
+		ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size); // just a small number
 		
-		this.ctx.moveTo(x * this.wall_settings.size + (this.radius / 5) * 2, y * this.wall_settings.size + this.radius - this.radius / 10);
-		this.ctx.lineTo(x * this.wall_settings.size + this.radius, y * this.wall_settings.size + this.radius - this.radius / 2);
-		this.ctx.stroke();
+		ctx.moveTo(x * this.wallSettings.size + (this.radius / 5) * 2, y * this.wallSettings.size + this.radius - this.radius / 10);
+		ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius - this.radius / 2);
+		ctx.stroke(); 
 	}
 
-	/**
-	 * Handles the enter and leaving of the ghosthouse
-	 */
-	ghosthouseHandler(){
-		// enter the ghosthouse
-		if(!this.ghosthouse.inside){
-			if(this.path.length <= 1){
-				this.disablemovement = true;
-				this.path = [];
-
-				// move the ghost to the x-axis center
-				this.x = this.x < 14.5 - this.speed.current ? this.x += this.speed.current : this.x > 14.5 + this.speed.current ? this.x -= this.speed.current : this.x = 14.5;
-				
-				// move the ghost down
-				if(this.x == 14.5)
-					if(this.y < 14)
-						this.y += this.speed.current;
-					else{
-						this.y = 14;
-						this.node = {x:14, y:14};
-						this.next_node = {x:13, y:14};
-						this.ghosthouse = {inside: true, intransit: false};
-						this.back = 1;
-
-						this.speed.current = this.speed.default;
-						this.eaten = false;
-
-						this.disablemovement = false;
-						this._fleeing = true;
-					}
-			}
-		} else 
-		
-		// leave the ghosthouse
-		if(this.ghosthouse.inside){
-			if(this.path.length <= 1){
-				this.disablemovement = true;
-				this.path = [];
-
-				// move the ghost to the x-axis center
-				this.x = this.x < 14.5 - this.speed.current ? this.x += this.speed.current : this.x > 14.5 + this.speed.current ? this.x -= this.speed.current : this.x = 14.5;
-
-				// move the ghost down
-				if(this.x == 14.5)
-					if(this.y > 12)
-						this.y -= this.speed.current;
-					else{
-						this.y = 12;
-						this.node = {x:14, y:12};
-						this.next_node = {x:15, y:12}
-						this.back = 3;
-
-						this.disablemovement = false;
-						this._fleeing = false;
-						this.ghosthouse = {inside: false, intransit: false};
-					}
-			}
-		}
-	}
-
-	/**
-	 * sets the state of fleeing
-	 */
 	set fleeing(state){
-		if(!this.ghosthouse.inside)
+		if(!this.inbox)
 			this._fleeing = state;
 
-		this._animate_fleeing = state;
-
+		this._fleeing_animate = state;
 		if(state){
 			this.path = [];
-			this.force_uturn = true;
+			this.allow_uturn = true;
 		}
-	} get fleeing(){ return this._fleeing;};
-
-	set eaten(state){
-		this._eaten = state;
-
-		if(state){
-			// set the back to something non-existant so the pathfinding may search in all directions
-			this.back = 4;
-			this.speed.current = 0.3;
-			this.enterGhosthouse();
-		}
-	} get eaten(){ return this._eaten; };
-
-	/**
-	 * let the ghost enter the box
-	 */
-	enterGhosthouse(){
-		if(!this.ghosthouse.inside){
-			this._animate_fleeing = false;
-			this.ghosthouse.intransit = true;
-
-			this.customPath({x:14,y:12});
-		}
-	}
-
-	/**
-	 * let the ghost leave the box
-	 */
-	leaveGhosthouse(){
-		if(this.ghosthouse.inside){
-			this.customPath({x:14,y:14});
-			this.ghosthouse.intransit = true;
-		}
-	}
+	};
+	get fleeing(){ return this._fleeing;};
 
 	/**
 	 * customPath requires an x and y in one var, and returns a path, but its hidden vallue will be a boolean
-	 * @param {*} destination target 
 	 */
-	customPath(destination){
-		this._fleeing = false;
-		this.scattering = false;
+	set customPath(destination){
+		this._customPath = true;
 
-		// create a path
-		if(this.inTunnel())
-			this.path = new PacMan_PathFinding({x:this.next_node.x, y:this.next_node.y},{x:destination.x,y:destination.y},this.space_map, "manhattan", 4);
-		else
-			this.path = new PacMan_PathFinding({x:this.next_node.x, y:this.next_node.y},{x:destination.x,y:destination.y},this.space_map, "manhattan", this.back);
+		// debugging will return the whole class instead of only a path
+		if(this.debug){
+			this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:destination.x,y:destination.y},this.spaceMap, "manhattan", this.back, true);
+			this.path = this.PacMan_PathFinding.path;
+		} else
+			this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:destination.x,y:destination.y},this.spaceMap, "manhattan", this.back);
 
 		// check the path
-		if(this.path[0].x != this.next_node.x || this.path[0].y != this.next_node.y){
+		if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
 			this.path.reverse(); 				// reverse the path
-			this.path.push(this.next_node); 	// add target_node to the last place
+			this.path.push(this.target_node); 	// add target_node to the last place
 			this.path.reverse();				// reverse again
 		}
 
@@ -833,57 +868,48 @@ class PacManAI_Shell{
 		if(this.path[0].x == this.node.x && this.path[0].y == this.node.y){
 			this.path.splice(0,1);
 		}
-	}
+	};
+	get customPath(){ return this.path;};
 
-	/**
-	 * checks whether an new path could or should be created
-	 * @param {*} node node we are on
-	 * @param {*} path path with nodes
-	 * @param {*} intersection_map map with all intersections
-	 */
-	atIntersection(node = this.node, path = this.path, intersection_map = this.intersection_map){
-		if(path.length == 0)
+	atIntersection(){
+		if(this.path.length == 0)
 			return true;
 
-		for(var i = 0; i < intersection_map.length; i++){
-			if(node.x == intersection_map[i].x && node.y == intersection_map[i].y)
+		for(var i = 0; i < this.intersectionMap.length; i++){
+			if(this.node.x == this.intersectionMap[i].x && this.node.y == this.intersectionMap[i].y)
 				return true;
 		}
 		return false;
 	}
-	/**
-	 * generates a random direction excluding the back
-	 * @param {*} next_node next node it is moving towards
-	 * @param {*} space_map map with all the available spaces
-	 */
-	randomDir(next_node = this.next_node, space_map = this.space_map, back = this.back){
-		var ret = [];
-		for (let i = 0; i < space_map.length; i++){
+
+	randomDir(){
+		this.ret = [];
+		for (let i = 0; i < this.spaceMap.length; i++){
 			// the number at the end is for knowing what the back is in case we take that path
 
 			// left
-			if (space_map[i].x == next_node.x - 1 && space_map[i].y == next_node.y && back != 3){
-				ret.push({x:space_map[i].x, y:space_map[i].y, cost:space_map[i].cost, back:1}); 
+			if (this.spaceMap[i].x == this.target_node.x - 1 && this.spaceMap[i].y == this.target_node.y && this.back != 3){
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:1}); 
 			}	
 		
 			// right
-			if (space_map[i].x == next_node.x + 1 && space_map[i].y == next_node.y && back != 1) {
-				ret.push({x:space_map[i].x, y:space_map[i].y, cost:space_map[i].cost, back:3});
+			if (this.spaceMap[i].x == this.target_node.x + 1 && this.spaceMap[i].y == this.target_node.y && this.back != 1) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:3});
 			}	
 	
 			// down
-			if (space_map[i].x == next_node.x && space_map[i].y == next_node.y + 1 && back != 2) {
-				ret.push({x:space_map[i].x, y:space_map[i].y, cost:space_map[i].cost, back:0});
+			if (this.spaceMap[i].x == this.target_node.x && this.spaceMap[i].y == this.target_node.y + 1 && this.back != 2) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:0});
 			}	
 	
 			// top
-			if (space_map[i].x == next_node.x && space_map[i].y == next_node.y - 1 && back != 0) {
-				ret.push({x:space_map[i].x, y:space_map[i].y, cost:space_map[i].cost, back:2});
+			if (this.spaceMap[i].x == this.target_node.x && this.spaceMap[i].y == this.target_node.y - 1 && this.back != 0) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:2});
 			}
 		}
 
-		if(ret.length > 0){
-			return ret[Math.floor(Math.random() * ret.length)].back;
+		if(this.ret.length > 0){
+			return this.ret[Math.floor(Math.random() * this.ret.length)].back;
 		}
 	}
 
@@ -893,23 +919,23 @@ class PacManAI_Shell{
 		if(this.inTunnel() && !this.fleeing){
 			// tunnel teleport part
 			if(this.x >= 28 && this.y == 15){
-				this.x = 2; this.node.x = 2; this.next_node.x = 3; return false;} 
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
 			else if(this.x <= 1 && this.y == 15){
-				this.x = 27; this.node.x = 27; this.next_node.x = 26; return false;}
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
 
 			// if stuck in tunnel tunnel
 			if(this.back == 1 && this.x < 7 && this.node.y == 15){
-				this.x -= this.speed.current;
+				this.x -= this.speed;
 				this.path = [];
-				this.next_node.x = this.node.x - 1;
+				this.target_node.x = this.node.x - 1;
 
 				return true;
 			} else
 
 			if(this.back == 3 & this.x > 22 && this.node.y == 15){
-				this.x += this.speed.current;
+				this.x += this.speed;
 				this.path = [];
-				this.next_node.x = this.node.x + 1;
+				this.target_node.x = this.node.x + 1;
 
 				return true;
 			}
@@ -920,7 +946,7 @@ class PacManAI_Shell{
 
 	inTunnel(){
 		for(var i = 0; i < this.tunnel.length; i++){
-			if(this.next_node.x == this.tunnel[i].x && this.next_node.y == this.tunnel[i].y)
+			if(this.target_node.x == this.tunnel[i].x && this.target_node.y == this.tunnel[i].y)
 			return true;
 		}
 
@@ -929,61 +955,557 @@ class PacManAI_Shell{
 	}
 }
 
-/**
- * Shell containing the AI and the scatter function, which is in every AI the same
- */
-class PacManPathGenerator{
-	constructor(ID){
-		this.GhostBeaviour = ID == 0 ? new PacManAI_Oikake() : ID == 1 ? new PacManAI_Machibuse() : ID == 2 ? new PacManAI_Kimagure() : new PacManAI_Otoboke();
-	}
+class PacManAI_Machibuse{
+	constructor(wallSettings, spaceMap, intersectionMap, tunnel, size = canvas.width / 128 /* = 15*/){
+		this.name = "Machibuse";
+		this.pathColor = "pink";
+		this.color = 200; 		// only white or grey colors, so only one value
+		this.defspeed = 0;		// globaly set
+		this.speed = 0.1; 		//0.022
 
-	attack(pacman, ghosts, current_path, node, next_node, back, space_map, node_tools){
-		return this.GhostBeaviour.createPath(pacman, ghosts, current_path, node, next_node, back, space_map, node_tools);
-	}
+		this.inbox = true;				// whether the ai is in the box
+		this.leavebox = false;			// if set to true the ai will try to leave the box
+		this.enterbox = false;			// if set to true the ai will try to enter the box
+		this.disablemovement = false;	// disables the ais movement
+		this._customPath = false;
+		this.scattering = false;		// scatter boolean
+		this._fleeing = true; 			// fleeing hidden boolean, getter and setter defined in this class
+		this._fleeing_animate = false;	// whether we should change the ghost' appearance
+		this.allow_uturn = false;		// whether or not the ai may make a uturn
+		// if both are false, the AI will be chasing 
 
-	/**
-	 * Creates a path to the home specified
-	 * @param {*} node 
-	 * @param {*} next_node 
-	 * @param {*} back 
-	 * @param {*} home 
-	 * @param {*} space_map 
-	 */
-	scatter(node, next_node, back, space_map, home = this.GhostBeaviour.home){
-		var path = [];
+		this.home = [{x: 2, y: 2}, {x: 3, y: 2}];	// place to go if scatteringing
+		this.target = {x: 0, y: 0}; 				// only used to see if our path still leads us to pacman
 
-		//if not on home ID 1, and our target is not home ID 1, create a path
-		if(node.x == home[0].x && node.y == home[0].y){
-			path = new PacMan_PathFinding({x:next_node.x, y:next_node.y},{x:home[1].x,y:home[1].y}, space_map, "manhattan", back);
-		} else {
-			path = new PacMan_PathFinding({x:next_node.x, y:next_node.y},{x:home[0].x,y:home[0].y}, space_map, "manhattan", back,);
+		this.x = 13;
+		this.y = 15;
+		this.node = {
+			x:this.x,
+			y:this.y
+		};
+
+		// next node AI will move to
+		this.target_node = {
+			x:this.x,
+			y:this.y
+		};
+
+		// goal of the ai
+		this.pacmanTarget = {
+			x:0,
+			y:0
+		};
+
+		// box
+		this.box = [
+			{x:11,y:13},
+			{x:18,y:17},
+		];
+
+		// AI eat variables
+		this.eaten = {
+			state:false,
+			speed:0,		// globaly set
+
+			blinkrate:0,	// globaly set
+			blinkcurrent:0, // globaly set
+			blinkspeed:0,	// globaly set
+			blinkbool:true	// true is going on, false is going off
 		}
 
-		// if our node we are already moving towards is not in our path, add it
-		if(path[0].x != next_node.x || path[0].y != next_node.y){
-			path.reverse(); 			// reverse the path
-			path.push(next_node); 		// add target_node to the last place
-			path.reverse();				// reverse again
+		this.back = 3; // up = 0, right = 1, down = 2, left = 3  
+		this.radius = size;
+		
+		this.wallSettings = wallSettings;
+		this.tunnel = tunnel;
+		this.spaceMap = spaceMap;
+		this.intersectionMap = intersectionMap;
+		this.path = [];
+		
+		this.debug = false;
+	}
+	
+	/**
+	 * 
+	 * @param {Object} pacman position of the player
+	 * @param {Object} ghosts required for Kimagure AI / Inky AI
+	 */
+	update(pacman, ghosts){
+		this.updatePath(pacman);
+		this.move();
+		this.draw(this.x, this.y);
+	}
+
+	updatePath(pacman){
+		if(this.leavebox){
+			if(!this.inbox){
+				console.log("already outside the box");
+				this.leavebox = false;
+				return;
+			}
+
+			this._fleeing = false;
+			this.customPath = {x:14,y:14};
+			if(this.path.length == 0){
+				this.disablemovement = true;
+
+				if(this.y >= 12)
+					this.y -= this.speed;
+				else if(this.y < 12){
+					this.y = 12;
+					this.node.y = 12; this.target_node.y = 12;
+					this.disablemovement = false;
+					this.leavebox = false;
+					this._fleeing = false;
+					this._customPath = false;
+					this.inbox = false;
+				}
+			}
+		} else
+
+		if(this.enterbox){
+			if(this.inbox){
+				console.log("already inside the box");
+				this.enterbox = false;
+				return;
+			}
+
+			this.customPath = {x:14,y:12};
+			if(this.path.length == 0){
+				this.disablemovement = true;
+
+				if(this.y <= 14)
+					this.y += this.speed;
+				else if(this.y > 14){
+					this.y = 14;
+					this.node.y = 14; this.target_node.y = 14;
+					this.disablemovement = false;
+					this.enterbox = false;
+					this._customPath = false;
+					this._fleeing = true;
+					this._fleeing_animate = false;
+					this.inbox = true;
+					this.speed = this.defspeed;
+					this.eaten.state = false;
+				}
+			}
+		} else
+
+		// if the AI is scatteringing
+		if(this.scattering && this.atIntersection()){
+			var checkpath = false;
+		
+			//if not on home ID 1, and our target is not home ID 1, create a path
+			if(this.node.x == this.home[0].x && this.node.y == this.home[0].y && 
+				(this.target.x != this.home[1].x || this.target.y != this.home[1].y)){
+				// set our target so we don't run over this code all the time
+				this.target.x = this.home[1].x; this.target.y = this.home[1].y;
+				checkpath = true;
+
+				// debugging will return the whole class instead of only a path
+				if(this.debug){
+					this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[1].x,y:this.home[1].y},this.spaceMap, "manhattan", this.back, true);
+					this.path = this.PacMan_PathFinding.path;
+				} else
+					this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[1].x,y:this.home[1].y},this.spaceMap, "manhattan", this.back);
+			} else
+
+			// if not on home ID 0, and our target is not home ID 0, create a path
+			if(this.node.x != this.home[0].x && this.node.y != this.home[0].y &&
+				(this.target.x != this.home[0].x || this.target.y != this.home[0].y)){
+				// set our target so we don't run over this code all the time
+				this.target.x = this.home[0].x; this.target.y = this.home[0].y;
+				checkpath = true;
+
+				// debugging will return the whole class instead of only a path
+				if(this.debug){
+					this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[0].x,y:this.home[0].y},this.spaceMap, "manhattan", this.back, true);
+					this.path = this.PacMan_PathFinding.path;
+				} else
+					this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[0].x,y:this.home[0].y},this.spaceMap, "manhattan", this.back);
+			}
+			
+			if(checkpath){
+				// if our node we are already moving towards is not in our path, add it
+				if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+					this.path.reverse(); 				// reverse the path
+					this.path.push(this.target_node); 	// add target_node to the last place
+					this.path.reverse();				// reverse again
+				}
+
+				// if we are already on this.path[0], remove
+				if(this.path[0].x == this.node.x && this.path[0].y == this.node.y){
+					this.path.splice(0,1);
+				}
+			}
+		} else if (this.atIntersection()){
+
+			// Machibuse will always try to get 4 tiles in front of PacMan
+			// pacmans angle is his face
+			switch(pacman.angle){
+				case 0:
+					this.pacmanTarget.x = pacman.x;
+					this.pacmanTarget.y = pacman.y - 4;
+					break;
+				case 1:
+					this.pacmanTarget.x = pacman.x + 4;
+					this.pacmanTarget.y = pacman.y;
+					break;
+				case 2:
+					this.pacmanTarget.x = pacman.x;
+					this.pacmanTarget.y = pacman.y + 4;
+					break;
+				case 3:
+					this.pacmanTarget.x = pacman.x - 4;
+					this.pacmanTarget.y = pacman.y;
+					break;
+			}
+
+			if(this.isWall(this.pacmanTarget.x, this.pacmanTarget.y))
+				this.pacmanTarget = this.getNearestSpaceFrom({x:this.pacmanTarget.x, y:this.pacmanTarget.y});
+
+			if((this.pacmanTarget.x != this.target.x || this.pacmanTarget.y != this.target.y) || this.path.length == 0){
+				if(!this.stuckInTunnel() && !this.fleeing && !this.scattering && !this.eaten.state){
+					// debugging will return the whole class instead of only a path
+					if(this.debug){
+						this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.pacmanTarget.x,y:this.pacmanTarget.y},this.spaceMap, "manhattan", this.back, true);
+						this.path = this.PacMan_PathFinding.path;
+					} else
+						this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.pacmanTarget.x,y:this.pacmanTarget.y},this.spaceMap, "manhattan", this.back);
+
+					// if our node we are already moving towards is not in our path, add it
+					if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+						this.path.reverse(); 				// reverse the path
+						this.path.push(this.target_node); 	// add target_node to the last place
+						this.path.reverse();				// reverse again
+					}
+
+					this.target.x = this.pacmanTarget.x; this.target.y = this.pacmanTarget.y;
+				}
+			}
+		}
+
+		// fleeing is random at each intersection so we have a complete seperate move function for it
+
+		// show chosen path and examined paths
+		if(this.debug){
+			for(var i = 0; i < this.path.length; i++){
+				ctx.fillStyle = "yellow";
+				ctx.font = "30px Arial";
+				ctx.beginPath();
+				ctx.fillText(this.path[i].h, this.path[i].x * 28 + 9, (this.path[i].y + 0.5) * 28 + 9);
+				ctx.stroke();
+			}
+
+			for(var i = 0; i < this.PacMan_PathFinding.closedset.length; i++){
+				ctx.fillStyle = "yellow";
+				ctx.font = "10px Arial";
+					ctx.beginPath();
+					ctx.fillText(this.PacMan_PathFinding.closedset[i].h,this.PacMan_PathFinding.closedset[i].x * 28 + 9, (this.PacMan_PathFinding.closedset[i].y + 0.5) * 28 + 9);
+					ctx.stroke();
+			}
+		}
+	}
+	
+	move(){
+		// EXPLANATION OF THE MOVE CODE
+		/*
+		if(this.x < this.path[0].x){
+			if(this.x + this.speed > this.node.x + 1){	// if our movespeed moves the AI past the target
+				this.x = this.node.x = this.path[0].x;  // update the position to the target
+				if(this.path.length != 0)
+					this.path.splice(0,1);				// remove the target from the path
+
+				this.back = 4;
+			} else if(this.y == Math.round(this.y)){	// if the AI is on a round y line
+				this.x += this.speed;					// move the AI
+				this.back = 4;							// set the back of the AI so he can't uturn
+				this.target_node.x = this.node.x + 1; 	// make the target node always one further
+			}
+		}
+
+		// teleporting
+		// target_node must be always one ahead of the AI
+		if(this.x >= 28 && this.y == 15){
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
+			else if(this.x <= 1 && this.y == 15){
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
+		*/
+		// just prevent movement
+		if(this.disablemovement) {} else
+
+		// if fleeing
+		if(this.fleeing){
+			// tunnel teleport part
+			if(this.x >= 28 && this.y == 15){
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
+			else if(this.x <= 1 && this.y == 15){
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
+
+			if(this.back == 3){
+				if(this.x + this.speed > this.node.x + 1){
+					this.x = this.node.x + 1; 
+					this.node.x += 1;
+					
+					if(this.allow_uturn){
+						this.back = 1;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.y == Math.round(this.y)){
+					this.x += this.speed;
+					this.target_node.x = this.node.x + 1;
+				}
+			}
+
+			if(this.back == 1){
+				if(this.x - this.speed < this.node.x - 1){
+					this.x = this.node.x -= 1; 
+					
+					if(this.allow_uturn){
+						this.back = 3;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.y == Math.round(this.y)){
+					this.x -= this.speed; 
+					this.target_node.x = this.node.x - 1;
+				}
+			}
+
+			if(this.back == 0){
+				if(this.y + this.speed > this.node.y + 1){
+					this.y = this.node.y += 1; 
+					
+					if(this.allow_uturn){
+						this.back = 2;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.x == Math.round(this.x)){
+					this.y += this.speed; 
+					this.target_node.y = this.node.y + 1;
+				}
+			}
+
+			if(this.back == 2){
+				if(this.y - this.speed < this.node.y - 1){
+					this.y = this.node.y -= 1; 
+					
+					if(this.allow_uturn){
+						this.back = 0;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.x == Math.round(this.x)){
+					this.y -= this.speed;
+					this.target_node.y = this.node.y - 1;
+				}	
+			}
+
+			if(this.x == this.target_node.x || this.y == this.target_node.y){
+				// calculate the AI nodes
+				if(this.back == 0)
+					this.node.y = Math.floor(this.y);
+
+				if(this.back == 1)
+					this.node.x = Math.ceil(this.x);
+
+				if(this.back == 2)
+					this.node.y = Math.ceil(this.y);
+
+				if(this.back == 3)
+					this.node.x = Math.floor(this.x);
+			}
+		} else
+
+		// if following a created path
+		if(this.path[0] != undefined){
+			if(this.x < this.path[0].x){
+				if(this.x + this.speed > this.node.x + 1){
+					this.x = this.path[0].x;  			
+					this.back = 3;
+				} else if(this.y == Math.round(this.y)){
+					this.x += this.speed;				
+					this.back = 3;						
+					this.target_node.x = this.node.x + 1;
+				}
+			} else
+			
+			if(this.x > this.path[0].x){
+				if(this.x - this.speed < this.node.x - 1){
+					this.x = this.path[0].x; 
+					this.back = 1;
+				} else if(this.y == Math.round(this.y)){
+					this.x -= this.speed; 
+					this.back = 1;
+					this.target_node.x = this.node.x - 1;
+				}	
+			} else
+
+			if(this.y < this.path[0].y){
+				if(this.y + this.speed > this.node.y + 1){
+					this.y = this.path[0].y; 
+					this.back = 0;	
+				} else if(this.x == Math.round(this.x)){
+					this.y += this.speed; 
+					this.back = 0;
+					this.target_node.y = this.node.y + 1;
+				}
+			} else
+			
+			if(this.y > this.path[0].y){
+				if(this.y - this.speed < this.node.y - 1){
+					this.y = this.path[0].y; 
+					this.back = 2;
+				} else if(this.x == Math.round(this.x)){
+					this.y -= this.speed;
+					this.back = 2;
+					this.target_node.y = this.node.y - 1;
+				}	
+			}
+
+			if(this.x == this.path[0].x && this.y == this.path[0].y){
+				// calculate the AI nodes
+				if(this.back == 0)
+					this.node.y = Math.floor(this.y);
+
+				if(this.back == 1)
+					this.node.x = Math.ceil(this.x);
+
+				if(this.back == 2)
+					this.node.y = Math.ceil(this.y);
+
+				if(this.back == 3)
+					this.node.x = Math.floor(this.x);
+
+
+				// rebuild path
+				if(this.path.length != 0){
+					this.path.splice(0,1);
+				} 
+			}
+		}	
+	}
+
+	draw(x, y){
+		if(this.eaten.state){
+			if(this.eaten.blinkbool){ // going on
+				this.eaten.blinkcurrent -= this.eaten.blinkspeed;
+				if (this.eaten.blinkcurrent <= 0){
+					this.eaten.blinkcurrent = 0;
+					this.eaten.blinkbool = false;
+				}
+			} else { // going off
+				this.eaten.blinkcurrent += this.eaten.blinkspeed;
+				if (this.eaten.blinkcurrent >= this.eaten.blinkrate){
+					this.eaten.blinkcurrent = this.eaten.blinkrate;
+					this.eaten.blinkbool = true;
+				}
+			}   
+
+			var color = (this.eaten.blinkcurrent / this.eaten.blinkrate) * this.color;
+			ctx.strokeStyle="rgb("+ color + "," + color + "," + color + ")"; 
+		} else
+			ctx.strokeStyle="rgb("+ this.color + "," + this.color + "," + this.color + ")"; 
+
+		ctx.lineWidth = this.wallSettings.border_thickness - 2;
+		
+		x += 0.5;	// position correction
+		y += 0.5;	// position correction
+
+		ctx.beginPath();
+		ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI, 0, false);
+		ctx.moveTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size);
+
+		// LEGS
+		if (this._fleeing_animate){
+			ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius-this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius-this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius/3, y * this.wallSettings.size + this.radius - this.radius / 4);	
+			ctx.lineTo(x * this.wallSettings.size + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
+		} else {
+			ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius / 3, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
+		}
+
+		ctx.moveTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
+		ctx.lineTo(x * this.wallSettings.size - this.radius / 3, y * this.wallSettings.size - this.radius);
+		
+		ctx.moveTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius / 2);
+		ctx.lineTo(x * this.wallSettings.size - this.radius / 1.5, y * this.wallSettings.size - this.radius / 1.35);
+
+		ctx.moveTo(x * this.wallSettings.size + this.radius / 1.1, y * this.wallSettings.size + this.radius / 1.1);
+		ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size - this.radius / 2);
+
+		ctx.moveTo(x * this.wallSettings.size + this.radius / 7, y * this.wallSettings.size + this.radius - this.radius / 7);
+		ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size); // just a small number
+		
+		ctx.moveTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius - this.radius / 4);
+		ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius - this.radius / 2);
+		ctx.stroke(); 
+	}
+
+	set fleeing(state){
+		if(!this.inbox)
+			this._fleeing = state;
+			
+		this._fleeing_animate = state;
+		if(state){
+			this.path = [];
+			this.allow_uturn = true;
+		}
+	};
+	get fleeing(){ return this._fleeing;};
+
+	/**
+	 * customPath requires an x and y in one var, and returns a path, but its hidden vallue will be a boolean
+	 */
+	set customPath(destination){
+		this._customPath = true;
+
+		// debugging will return the whole class instead of only a path
+		if(this.debug){
+			this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:destination.x,y:destination.y},this.spaceMap, "manhattan", this.back, true);
+			this.path = this.PacMan_PathFinding.path;
+		} else
+			this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:destination.x,y:destination.y},this.spaceMap, "manhattan", this.back);
+
+		// check the path
+		if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+			this.path.reverse(); 				// reverse the path
+			this.path.push(this.target_node); 	// add target_node to the last place
+			this.path.reverse();				// reverse again
 		}
 
 		// if we are already on this.path[0], remove
-		if(path[0].x == node.x && path[0].y == node.y){
-			path.splice(0,1);
+		if(this.path[0].x == this.node.x && this.path[0].y == this.node.y){
+			this.path.splice(0,1);
 		}
+	};
+	get customPath(){ return this.path;};
 
-		return path;
+	atIntersection(){
+		if(this.path.length == 0)
+			return true;
+
+		for(var i = 0; i < this.intersectionMap.length; i++){
+			if(this.node.x == this.intersectionMap[i].x && this.node.y == this.intersectionMap[i].y)
+				return true;
+		}
+		return false;
 	}
-}
 
-/**
- * Contains tools used for calculation
- */
-class PacManNodeTools{
-	constructor(space_map, ghosthouse){
-		this.space_map = space_map;
-
-		this.ghosthouse = ghosthouse;
-	}
 	/**
 	 * Finds the nearest space from a certain point
 	 * @param {*} node contains at least an x and y
@@ -992,72 +1514,56 @@ class PacManNodeTools{
 		if(!this.isWall(node.x, node.y))
 			return node;
 
-		var closedset = [];			// nodes which have been evaluated and have no more use
-		var openset = [];			// nodes which have been evaluated but can serve as pointer
-		var neighbours = [];		// neighbours of the current node
-		openset.push(node);
+		this.closedset = [];		// nodes which have been evaluated and have no more use
+		this.openset = [];			// nodes which have been evaluated but can serve as pointer
+		this.neighbours = [];		// neighbours of the current node
+		this.openset.push(node);
 
-		while(openset.length !== 0){	
-			var currentNode = openset[0]; // get the first item from the openset
+		while(this.openset.length !== 0){	
+			var currentNode = this.openset[0]; // get the first item from the openset
 			
-			for (let i = 0; i < openset.length; i++){
-				if(openset[i].x == currentNode.x && openset[i].y == currentNode.y)
-					openset.splice(i, 1);
+			for (let i = 0; i < this.openset.length; i++){
+				if(this.openset[i].x == currentNode.x && this.openset[i].y == currentNode.y)
+					this.openset.splice(i, 1);
 			}
-			closedset.push(currentNode);
+			this.closedset.push(currentNode);
 
 			// add the neighbours which just have been checked to the array
-			if(!this.inArray(closedset, {x:currentNode.x - 1, y:currentNode.y}))
-				neighbours.push({x:currentNode.x - 1, y:currentNode.y});
+			if(!this.inArray(this.closedset, {x:currentNode.x - 1, y:currentNode.y}))
+				this.neighbours.push({x:currentNode.x - 1, y:currentNode.y});
 			
-			if(!this.inArray(closedset, {x:currentNode.x + 1, y:currentNode.y}))
-				neighbours.push({x:currentNode.x + 1, y:currentNode.y});
+			if(!this.inArray(this.closedset, {x:currentNode.x + 1, y:currentNode.y}))
+				this.neighbours.push({x:currentNode.x + 1, y:currentNode.y});
 
-			if(!this.inArray(closedset, {x:currentNode.x, y:currentNode.y + 1}))
-				neighbours.push({x:currentNode.x, y:currentNode.y + 1});
+			if(!this.inArray(this.closedset, {x:currentNode.x, y:currentNode.y + 1}))
+				this.neighbours.push({x:currentNode.x, y:currentNode.y + 1});
 
-			if(!this.inArray(closedset, {x:currentNode.x, y:currentNode.y - 1}))
-				neighbours.push({x:currentNode.x, y:currentNode.y - 1});
+			if(!this.inArray(this.closedset, {x:currentNode.x, y:currentNode.y - 1}))
+				this.neighbours.push({x:currentNode.x, y:currentNode.y - 1});
 
 
-			for (let n = 0; n < neighbours.length; n++){
+			var neighbours_length = this.neighbours.length;
+			for (let n = 0; n < neighbours_length; n++){
 				// left
-				if (!this.isWall(neighbours[n].x - 1, neighbours[n].y))
-					return {x:neighbours[n].x - 1, y:neighbours[n].y};
+				if (!this.isWall(this.neighbours[n].x - 1, this.neighbours[n].y))
+					return {x:this.neighbours[n].x - 1, y:this.neighbours[n].y};
 				
 				// right
-				if (!this.isWall(neighbours[n].x + 1, neighbours[n].y))
-					return {x:neighbours[n].x + 1, y:neighbours[n].y};
+				if (!this.isWall(this.neighbours[n].x + 1, this.neighbours[n].y))
+					return {x:this.neighbours[n].x + 1, y:this.neighbours[n].y};
 				
 				// down
-				if (!this.isWall(neighbours[n].x, neighbours[n].y + 1))
-					return {x:neighbours[n].x, y:neighbours[n].y + 1};
+				if (!this.isWall(this.neighbours[n].x, this.neighbours[n].y + 1))
+					return {x:this.neighbours[n].x, y:this.neighbours[n].y + 1};
 				
 				// top
-				if (!this.isWall(neighbours[n].x, neighbours[n].y - 1))
-					return {x:neighbours[n].x, y:neighbours[n].y - 1};
+				if (!this.isWall(this.neighbours[n].x, this.neighbours[n].y - 1))
+					return {x:this.neighbours[n].x, y:this.neighbours[n].y - 1};
 
 				// add the currentNode to the closedset
-				openset.push(neighbours[n]);
-			}
-
-			neighbours = [];
-		}
-	}
-
-	isWall(x, y){
-		var isWall = true;
-
-		// if in the box it should be treated as a wall
-		if(!(this.ghosthouse.area[0].x < x && this.ghosthouse.area[1].x > x && 
-			this.ghosthouse.area[0].y < y && this.ghosthouse.area[1].y > y)){
-			
-			for (let i = 0; i < this.space_map.length; i++){
-				if(this.space_map[i].x == x && this.space_map[i].y == y)
-					isWall = false;
+				this.openset.push(this.neighbours[n]);
 			}
 		}
-        return isWall;
 	}
 
 	inArray(array, node){
@@ -1065,230 +1571,1542 @@ class PacManNodeTools{
 			if(node.x == array[i].x && node.y == array[i].y)
 				return true;
 		}
+		return false
+	}
+
+	/**
+     * checks if a position is a wall
+     * @param {direction} x 
+     * @param {direction} y 
+     */
+    isWall(x, y){
+		var isWall = true;
+
+        // if in the box it should be treated as a wall
+		if(!(this.box[0].x < x && this.box[1].x > x && 
+			this.box[0].y < y && this.box[1].y > y)){
+			
+			for (let i = 0; i < this.spaceMap.length; i++){
+				if(this.spaceMap[i].x == x && this.spaceMap[i].y == y)
+					isWall = false;
+			}
+		}
+        return isWall;
+	}
+
+	randomDir(){
+		this.ret = [];
+		for (let i = 0; i < this.spaceMap.length; i++){
+			// the number at the end is for knowing what the back is in case we take that path
+
+			// left
+			if (this.spaceMap[i].x == this.target_node.x - 1 && this.spaceMap[i].y == this.target_node.y && this.back != 3){
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:1}); 
+			}	
+		
+			// right
+			if (this.spaceMap[i].x == this.target_node.x + 1 && this.spaceMap[i].y == this.target_node.y && this.back != 1) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:3});
+			}	
+	
+			// down
+			if (this.spaceMap[i].x == this.target_node.x && this.spaceMap[i].y == this.target_node.y + 1 && this.back != 2) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:0});
+			}	
+	
+			// top
+			if (this.spaceMap[i].x == this.target_node.x && this.spaceMap[i].y == this.target_node.y - 1 && this.back != 0) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:2});
+			}
+		}
+
+		if(this.ret.length > 0){
+			return this.ret[Math.floor(Math.random() * this.ret.length)].back;
+		}
+	}
+
+	stuckInTunnel(){
+		// if we are in a tunnel, the pathfinding will be unable to create a path,
+		// so we first move out of the tunnel
+		if(this.inTunnel() && !this.fleeing){
+			// tunnel teleport part
+			if(this.x >= 28 && this.y == 15){
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
+			else if(this.x <= 1 && this.y == 15){
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
+
+			// if stuck in tunnel tunnel
+			if(this.back == 1 && this.x < 7 && this.node.y == 15){
+				this.x -= this.speed;
+				this.path = [];
+				this.target_node.x = this.node.x - 1;
+
+				return true;
+			} else
+
+			if(this.back == 3 & this.x > 22 && this.node.y == 15){
+				this.x += this.speed;
+				this.path = [];
+				this.target_node.x = this.node.x + 1;
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	inTunnel(){
+		for(var i = 0; i < this.tunnel.length; i++){
+			if(this.target_node.x == this.tunnel[i].x && this.target_node.y == this.tunnel[i].y)
+			return true;
+		}
+
+		// else not in tunnel
 		return false;
 	}
 }
 
-/**
- * AI pathfinding
- */
-class PacManAI_Oikake{
-	constructor(){
-		// defines place to go if scattering
-		this.pathColor = "red";
-		this.insideGhosthouse = false;
-
-		this.x = 14;
-		this.y = 12;
-		this.home = [
-			{x: 27, y: 2}, 
-			{x: 26, y: 2}
-		];
-	}
-
-	createPath(pacman, ghosts, current_path, node, next_node, back, space_map, node_tools){
-		// if pacman leaves the target tile, calculate a new path to that target tile
-		if(current_path.length == 0 || (pacman.x != current_path[current_path.length - 1].x || pacman.y != current_path[current_path.length - 1].y)){
-			var path = [];
-
-			// debugging will return the whole class instead of only a path
-			path = new PacMan_PathFinding({x:next_node.x, y:next_node.y},{x:pacman.x,y:pacman.y}, space_map, "manhattan", back);
-
-			// if our node we are already moving towards is not in our path, add it
-			if(path[0].x != next_node.x || path[0].y != next_node.y){
-				path.reverse(); 			// reverse the path
-				path.push(next_node); 		// add next_node to the last place
-				path.reverse();				// reverse again
-			}
-
-			return path;
-		} else
-			return current_path;
-	}
-}
-
-class PacManAI_Machibuse{
-	constructor(){
-		// defines place to go if scattering
-		this.pathColor = "pink";
-		this.insideGhosthouse = true;
-
-		this.x = 13;
-		this.y = 15;
-		this.home = [
-			{x: 2, y: 2}, 
-			{x: 3, y: 2}
-		];
-	}
-
-	createPath(pacman, ghosts, current_path, node, next_node, back, space_map, node_tools){
-		// Machibuse will always try to get 4 tiles in front of PacMan
-		// pacmans angle is his face
-		var pacmanTarget = {x:0, y:0};
-
-		switch(pacman.angle){
-			case 0:
-				pacmanTarget.x = pacman.x;
-				pacmanTarget.y = pacman.y - 4;
-				break;
-			case 1:
-				pacmanTarget.x = pacman.x + 4;
-				pacmanTarget.y = pacman.y;
-				break;
-			case 2:
-				pacmanTarget.x = pacman.x;
-				pacmanTarget.y = pacman.y + 4;
-				break;
-			case 3:
-				pacmanTarget.x = pacman.x - 4;
-				pacmanTarget.y = pacman.y;
-				break;
-		}
-
-		if(node_tools.isWall(pacmanTarget.x, pacmanTarget.y))
-			pacmanTarget = node_tools.getNearestSpaceFrom({x:pacmanTarget.x, y:pacmanTarget.y});
-			
-		if(current_path.length == 0 || (pacmanTarget.x != current_path[current_path.length - 1].x || pacmanTarget.y != current_path[current_path.length - 1].y)){
-			// generate a path 
-			var path = new PacMan_PathFinding({x:next_node.x, y:next_node.y},{x:pacmanTarget.x,y:pacmanTarget.y}, space_map, "manhattan", back);
-
-			// if our node we are already moving towards is not in our path, add it
-			if(path[0].x != next_node.x || path[0].y != next_node.y){
-				path.reverse(); 				// reverse the path
-				path.push(next_node); 	// add next_node to the last place
-				path.reverse();				// reverse again
-			}
-
-			return path;			
-		} else 
-			return current_path;
-	}
-}
-
 class PacManAI_Kimagure{
-	constructor(){
-		// defines place to go if scattering
+	constructor(wallSettings, spaceMap, intersectionMap, tunnel, size = canvas.width / 128 /* = 15*/){
+		this.name = "Kimagure";
 		this.pathColor = "cyan";
-		this.insideGhosthouse = true;
+		this.color = 150; 		// only white or grey colors, so only one value
+		this.defspeed = 0;		// globaly set
+		this.speed = 0.1; 		//0.022
+
+		this.inbox = true;				// whether the ai is in the box
+		this.leavebox = false;			// if set to true the ai will try to leave the box
+		this.enterbox = false;			// if set to true the ai will try to enter the box
+		this.disablemovement = false;	// disables the ais movement
+		this._customPath = false;
+		this.scattering = false;		// scatter boolean
+		this._fleeing = true; 			// fleeing hidden boolean, getter and setter defined in this class
+		this._fleeing_animate = false;	// whether we should change the ghost' appearance
+		this.allow_uturn = false;		// whether or not the ai may make a uturn
+		// if both are false, the AI will be chasing 
+
+		this.home = [{x: 26, y: 30}, {x: 27, y: 30}];	// place to go if scatteringing
+		this.target = {x: 0, y: 0}; 				// only used to see if our path still leads us to pacman
 
 		this.x = 14;
 		this.y = 15;
-		this.home = [
-			{x: 26, y: 30},
-			{x: 27, y: 30}
-		];
-	}
+		this.node = {
+			x:this.x,
+			y:this.y
+		};
 
-	createPath(pacman, ghosts, current_path, node, next_node, back, space_map, node_tools){
-		// Kimagure will use a dubble vector from Oikake to 2 tiles in front of pacman as target
-		// pacmans angle is his face
-		var pacmanTarget = {x:0, y:0};
+		// next node AI will move to
+		this.target_node = {
+			x:this.x,
+			y:this.y
+		};
 
-		switch(pacman.angle){
-			case 0:
-				pacmanTarget.x = pacman.x;
-				pacmanTarget.y = pacman.y - 2;
-				break;
-			case 1:
-				pacmanTarget.x = pacman.x + 2;
-				pacmanTarget.y = pacman.y;
-				break;
-			case 2:
-				pacmanTarget.x = pacman.x;
-				pacmanTarget.y = pacman.y + 2;
-				break;
-			case 3:
-				pacmanTarget.x = pacman.x - 2;
-				pacmanTarget.y = pacman.y;
-				break;
+		// goal of the ai
+		this.pacmanTarget = {
+			x:0,
+			y:0
 		}
 
-		// get the heuristics to the target
-		pacmanTarget.x = pacmanTarget.x + (pacmanTarget.x - ghosts[0].node.x);
-		pacmanTarget.y = pacmanTarget.y + (pacmanTarget.y - ghosts[0].node.y);
+		// box
+		this.box = [
+			{x:11,y:13},
+			{x:18,y:17},
+		];
 
-		// if the goal is outside the playgound, change to to the playground borders
-		if(pacmanTarget.x > 28) pacmanTarget.x = 28; else if(pacmanTarget.x < 2) pacmanTarget.x = 2;
-		if(pacmanTarget.y > 30) pacmanTarget.y = 30; else if(pacmanTarget.y < 2) pacmanTarget.y = 0;
+		// AI eat variables
+		this.eaten = {
+			state:false,
+			speed:0,		// globaly set
 
-		if(node_tools.isWall(pacmanTarget.x, pacmanTarget.y))
-			pacmanTarget = node_tools.getNearestSpaceFrom({x:pacmanTarget.x, y:pacmanTarget.y});
+			blinkrate:0,	// globaly set
+			blinkcurrent:0, // globaly set
+			blinkspeed:0,	// globaly set
+			blinkbool:true	// true is going on, false is going off
+		}
 
-		if(current_path.length == 0 || (pacmanTarget.x != current_path[current_path.length - 1].x || pacmanTarget.y != current_path[current_path.length - 1].y)){
-			var path = new PacMan_PathFinding({x:next_node.x, y:next_node.y},{x:pacmanTarget.x,y:pacmanTarget.y}, space_map, "manhattan", back);
+		this.back = 3; // up = 0, right = 1, down = 2, left = 3 
+		this.radius = size;
+		
+		this.wallSettings = wallSettings;
+		this.tunnel = tunnel;
+		this.spaceMap = spaceMap;
+		this.intersectionMap = intersectionMap;
+		this.path = [];
+		
+		this.debug = false;
+	}
+	
+	/**
+	 * 
+	 * @param {Object} pacman position of the player
+	 * @param {Object} ghosts required for Kimagure AI / Inky AI
+	 */
+	update(pacman, ghosts){
+		this.updatePath(pacman, ghosts);
+		this.move();
+		this.draw(this.x, this.y);
+	}
 
-			// if our node we are already moving towards is not in our path, add it
-			if(path[0].x != next_node.x || path[0].y != next_node.y){
-				path.reverse(); 			// reverse the path
-				path.push(next_node); 		// add next_node to the last place
-				path.reverse();				// reverse again
+	updatePath(pacman, ghosts){
+		if(this.leavebox){
+			if(!this.inbox){
+				console.log("already outside the box");
+				this.leavebox = false;
+				return;
 			}
 
-			return path;			
+			this._fleeing = false;
+			this.customPath = {x:14,y:14};
+			if(this.path.length == 0){
+				this.disablemovement = true;
+
+				if(this.y >= 12)
+					this.y -= this.speed;
+				else if(this.y < 12){
+					this.y = 12;
+					this.node.y = 12; this.target_node.y = 12;
+					this.disablemovement = false;
+					this.leavebox = false;
+					this._fleeing = false;
+					this._customPath = false;
+					this.inbox = false;
+					this.fleeing = false;
+				}
+			}
 		} else
-			return current_path;
+
+		if(this.enterbox){
+			if(this.inbox){
+				console.log("already inside the box");
+				this.enterbox = false;
+				return;
+			}
+
+			this.customPath = {x:14,y:12};
+			if(this.path.length == 0){
+				this.disablemovement = true;
+
+				if(this.y <= 14)
+					this.y += this.speed;
+				else if(this.y > 14){
+					this.y = 14;
+					this.node.y = 14; this.target_node.y = 14;
+					this.disablemovement = false;
+					this.enterbox = false;
+					this._customPath = false;
+					this._fleeing = true;
+					this._fleeing_animate = false;
+					this.inbox = true;
+					this.speed = this.defspeed;
+					this.eaten.state = false;
+				}
+			}
+		} else
+
+		// if the AI is scatteringing
+		if(this.scattering && this.atIntersection()){
+			var checkpath = false;
+		
+			//if not on home ID 1, and our target is not home ID 1, create a path
+			if(this.node.x == this.home[0].x && this.node.y == this.home[0].y && 
+				(this.target.x != this.home[1].x || this.target.y != this.home[1].y)){
+				// set our target so we don't run over this code all the time
+				this.target.x = this.home[1].x; this.target.y = this.home[1].y;
+				checkpath = true;
+
+				// debugging will return the whole class instead of only a path
+				if(this.debug){
+					this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[1].x,y:this.home[1].y},this.spaceMap, "manhattan", this.back, true);
+					this.path = this.PacMan_PathFinding.path;
+				} else
+					this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[1].x,y:this.home[1].y},this.spaceMap, "manhattan", this.back);
+			} else
+
+			// if not on home ID 0, and our target is not home ID 0, create a path
+			if(this.node.x != this.home[0].x && this.node.y != this.home[0].y &&
+				(this.target.x != this.home[0].x || this.target.y != this.home[0].y)){
+				// set our target so we don't run over this code all the time
+				this.target.x = this.home[0].x; this.target.y = this.home[0].y;
+				checkpath = true;
+
+				// debugging will return the whole class instead of only a path
+				if(this.debug){
+					this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[0].x,y:this.home[0].y},this.spaceMap, "manhattan", this.back, true);
+					this.path = this.PacMan_PathFinding.path;
+				} else
+					this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[0].x,y:this.home[0].y},this.spaceMap, "manhattan", this.back);
+			}
+			
+			if(checkpath){
+				// if our node we are already moving towards is not in our path, add it
+				if(typeof(this.path[0].x == "undefined"))
+					this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[0].x,y:this.home[0].y},this.spaceMap, "manhattan", this.back);
+				
+				if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+					this.path.reverse(); 				// reverse the path
+					this.path.push(this.target_node); 	// add target_node to the last place
+					this.path.reverse();				// reverse again
+				}
+
+				// if we are already on this.path[0], remove
+				if(this.path[0].x == this.node.x && this.path[0].y == this.node.y){
+					this.path.splice(0,1);
+				}
+			}
+		} else 
+		
+		if(this.atIntersection()){
+
+			// Kimagure will use a dubble vector from Oikake to 2 tiles in front of pacman as target
+			// pacmans angle is his face
+			switch(pacman.angle){
+				case 0:
+					this.pacmanTarget.x = pacman.x;
+					this.pacmanTarget.y = pacman.y - 2;
+					break;
+				case 1:
+					this.pacmanTarget.x = pacman.x + 2;
+					this.pacmanTarget.y = pacman.y;
+					break;
+				case 2:
+					this.pacmanTarget.x = pacman.x;
+					this.pacmanTarget.y = pacman.y + 2;
+					break;
+				case 3:
+					this.pacmanTarget.x = pacman.x - 2;
+					this.pacmanTarget.y = pacman.y;
+					break;
+			}
+
+			// get the heuristics to the target
+			this.pacmanTarget.x = this.pacmanTarget.x + (this.pacmanTarget.x - ghosts[0].node.x);
+			this.pacmanTarget.y = this.pacmanTarget.y + (this.pacmanTarget.y - ghosts[0].node.y);
+
+			// if the goal is outside the playgound, change to to the playground borders
+			if(this.pacmanTarget.x > 30) this.pacmanTarget.x = 30; else if(this.pacmanTarget.x < 0) this.pacmanTarget.x = 0;
+			if(this.pacmanTarget.y > 32) this.pacmanTarget.y = 32; else if(this.pacmanTarget.y < 0) this.pacmanTarget.y = 0;
+
+			if(this.isWall(this.pacmanTarget.x, this.pacmanTarget.y))
+				this.pacmanTarget = this.getNearestSpaceFrom({x:this.pacmanTarget.x, y:this.pacmanTarget.y});
+
+			if((this.pacmanTarget.x != this.target.x || this.pacmanTarget.y != this.target.y) || this.path.length == 0){
+				if(!this.stuckInTunnel() && !this.fleeing && !this.scattering && !this.eaten.state){
+					// debugging will return the whole class instead of only a path
+					if(this.debug){
+						this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.pacmanTarget.x,y:this.pacmanTarget.y},this.spaceMap, "manhattan", this.back, true);
+						this.path = this.PacMan_PathFinding.path;
+					} else
+						this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.pacmanTarget.x,y:this.pacmanTarget.y},this.spaceMap, "manhattan", this.back);
+
+					// if our node we are already moving towards is not in our path, add it
+					if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+						this.path.reverse(); 				// reverse the path
+						this.path.push(this.target_node); 	// add target_node to the last place
+						this.path.reverse();				// reverse again
+					}
+
+					this.target.x = this.pacmanTarget.x; this.target.y = this.pacmanTarget.y;
+				}
+			}
+		}
+
+		// fleeing is random at each intersection so we have a complete seperate move function for it
+
+		// show chosen path and examined paths
+		if(this.debug){
+			for(var i = 0; i < this.path.length; i++){
+				ctx.fillStyle = "yellow";
+				ctx.font = "30px Arial";
+				ctx.beginPath();
+				ctx.fillText(this.path[i].h, this.path[i].x * 28 + 9, (this.path[i].y + 0.5) * 28 + 9);
+				ctx.stroke();
+			}
+
+			for(var i = 0; i < this.PacMan_PathFinding.closedset.length; i++){
+				ctx.fillStyle = "yellow";
+				ctx.font = "10px Arial";
+					ctx.beginPath();
+					ctx.fillText(this.PacMan_PathFinding.closedset[i].h,this.PacMan_PathFinding.closedset[i].x * 28 + 9, (this.PacMan_PathFinding.closedset[i].y + 0.5) * 28 + 9);
+					ctx.stroke();
+			}
+		}
+	}
+	
+	move(){
+		// EXPLANATION OF THE MOVE CODE
+		/*
+		if(this.x < this.path[0].x){
+			if(this.x + this.speed > this.node.x + 1){	// if our movespeed moves the AI past the target
+				this.x = this.node.x = this.path[0].x;  // update the position to the target
+				if(this.path.length != 0)
+					this.path.splice(0,1);				// remove the target from the path
+
+				this.back = 4;
+			} else if(this.y == Math.round(this.y)){	// if the AI is on a round y line
+				this.x += this.speed;					// move the AI
+				this.back = 4;							// set the back of the AI so he can't uturn
+				this.target_node.x = this.node.x + 1; 	// make the target node always one further
+			}
+		}
+
+		// teleporting
+		// target_node must be always one ahead of the AI
+		if(this.x >= 28 && this.y == 15){
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
+			else if(this.x <= 1 && this.y == 15){
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
+		*/
+
+		// just prevent movement
+		if(this.disablemovement) {} else
+
+		// if fleeing
+		if(this.fleeing){
+			// tunnel teleport part
+			if(this.x >= 28 && this.y == 15){
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
+			else if(this.x <= 1 && this.y == 15){
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
+
+			if(this.back == 3){
+				if(this.x + this.speed > this.node.x + 1){
+					this.x = this.node.x + 1; 
+					this.node.x += 1;
+					
+					if(this.allow_uturn){
+						this.back = 1;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.y == Math.round(this.y)){
+					this.x += this.speed;
+					this.target_node.x = this.node.x + 1;
+				}
+			}
+
+			if(this.back == 1){
+				if(this.x - this.speed < this.node.x - 1){
+					this.x = this.node.x -= 1; 
+					
+					if(this.allow_uturn){
+						this.back = 3;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.y == Math.round(this.y)){
+					this.x -= this.speed; 
+					this.target_node.x = this.node.x - 1;
+				}
+			}
+
+			if(this.back == 0){
+				if(this.y + this.speed > this.node.y + 1){
+					this.y = this.node.y += 1; 
+					
+					if(this.allow_uturn){
+						this.back = 2;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.x == Math.round(this.x)){
+					this.y += this.speed; 
+					this.target_node.y = this.node.y + 1;
+				}
+			}
+
+			if(this.back == 2){
+				if(this.y - this.speed < this.node.y - 1){
+					this.y = this.node.y -= 1; 
+					
+					if(this.allow_uturn){
+						this.back = 0;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.x == Math.round(this.x)){
+					this.y -= this.speed;
+					this.target_node.y = this.node.y - 1;
+				}	
+			}
+
+			if(this.x == this.target_node.x || this.y == this.target_node.y){
+				// calculate the AI nodes
+				if(this.back == 0)
+					this.node.y = Math.floor(this.y);
+
+				if(this.back == 1)
+					this.node.x = Math.ceil(this.x);
+
+				if(this.back == 2)
+					this.node.y = Math.ceil(this.y);
+
+				if(this.back == 3)
+					this.node.x = Math.floor(this.x);
+			}
+		} else
+
+		// if following a created path
+		if(this.path[0] != undefined){
+			if(this.x < this.path[0].x){
+				if(this.x + this.speed > this.node.x + 1){
+					this.x = this.path[0].x;  			
+					this.back = 3;
+				} else if(this.y == Math.round(this.y)){
+					this.x += this.speed;				
+					this.back = 3;						
+					this.target_node.x = this.node.x + 1;
+				}
+			} else
+			
+			if(this.x > this.path[0].x){
+				if(this.x - this.speed < this.node.x - 1){
+					this.x = this.path[0].x; 
+					this.back = 1;
+				} else if(this.y == Math.round(this.y)){
+					this.x -= this.speed; 
+					this.back = 1;
+					this.target_node.x = this.node.x - 1;
+				}	
+			} else
+
+			if(this.y < this.path[0].y){
+				if(this.y + this.speed > this.node.y + 1){
+					this.y = this.path[0].y; 
+					this.back = 0;	
+				} else if(this.x == Math.round(this.x)){
+					this.y += this.speed; 
+					this.back = 0;
+					this.target_node.y = this.node.y + 1;
+				}
+			} else
+			
+			if(this.y > this.path[0].y){
+				if(this.y - this.speed < this.node.y - 1){
+					this.y = this.path[0].y; 
+					this.back = 2;
+				} else if(this.x == Math.round(this.x)){
+					this.y -= this.speed;
+					this.back = 2;
+					this.target_node.y = this.node.y - 1;
+				}	
+			}
+
+			if(this.x == this.path[0].x && this.y == this.path[0].y){
+				// calculate the AI nodes
+				if(this.back == 0)
+					this.node.y = Math.floor(this.y);
+
+				if(this.back == 1)
+					this.node.x = Math.ceil(this.x);
+
+				if(this.back == 2)
+					this.node.y = Math.ceil(this.y);
+
+				if(this.back == 3)
+					this.node.x = Math.floor(this.x);
+
+
+				// rebuild path
+				if(this.path.length != 0){
+					this.path.splice(0,1);
+				} 
+			}
+		}	
+	}
+
+	draw(x, y){
+		if(this.eaten.state){
+			if(this.eaten.blinkbool){ // going on
+				this.eaten.blinkcurrent -= this.eaten.blinkspeed;
+				if (this.eaten.blinkcurrent <= 0){
+					this.eaten.blinkcurrent = 0;
+					this.eaten.blinkbool = false;
+				}
+			} else { // going off
+				this.eaten.blinkcurrent += this.eaten.blinkspeed;
+				if (this.eaten.blinkcurrent >= this.eaten.blinkrate){
+					this.eaten.blinkcurrent = this.eaten.blinkrate;
+					this.eaten.blinkbool = true;
+				}
+			}   
+
+			var color = (this.eaten.blinkcurrent / this.eaten.blinkrate) * this.color;
+			ctx.strokeStyle="rgb("+ color + "," + color + "," + color + ")"; 
+		} else
+			ctx.strokeStyle="rgb("+ this.color + "," + this.color + "," + this.color + ")"; 
+
+		ctx.lineWidth = this.wallSettings.border_thickness - 2;
+		
+		x += 0.5;	// position correction
+		y += 0.5;	// position correction
+
+		ctx.beginPath();
+		ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI, 0, false);
+		ctx.moveTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size);
+
+		// LEGS
+		if (this._fleeing_animate){
+			ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius-this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius-this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius/3, y * this.wallSettings.size + this.radius - this.radius / 4);	
+			ctx.lineTo(x * this.wallSettings.size + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
+		} else {
+			ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius / 3, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
+		}
+
+		ctx.moveTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size);
+		ctx.lineTo(x * this.wallSettings.size + this.radius / 3, y * this.wallSettings.size - this.radius);
+		
+		ctx.moveTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius / 2);
+		ctx.lineTo(x * this.wallSettings.size + this.radius / 1.5, y * this.wallSettings.size - this.radius / 1.35);
+
+		ctx.moveTo(x * this.wallSettings.size - this.radius / 1.1, y * this.wallSettings.size + this.radius / 1.1);
+		ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size - this.radius / 2);
+
+		ctx.moveTo(x * this.wallSettings.size - this.radius / 7, y * this.wallSettings.size + this.radius - this.radius / 7);
+		ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size); // just a small number
+		
+		ctx.moveTo(x * this.wallSettings.size + (this.radius / 5) * 2, y * this.wallSettings.size + this.radius - this.radius / 10);
+		ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius - this.radius / 2);
+		ctx.stroke(); 
+	}
+
+	set fleeing(state){
+		if(!this.inbox)
+			this._fleeing = state;
+			
+		this._fleeing_animate = state;
+		if(state){
+			this.path = [];
+			this.allow_uturn = true;
+		}
+	};
+	get fleeing(){ return this._fleeing;};
+
+	/**
+	 * customPath requires an x and y in one var, and returns a path, but its hidden vallue will be a boolean
+	 */
+	set customPath(destination){
+		this._customPath = true;
+
+		// debugging will return the whole class instead of only a path
+		if(this.debug){
+			this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:destination.x,y:destination.y},this.spaceMap, "manhattan", this.back, true);
+			this.path = this.PacMan_PathFinding.path;
+		} else
+			this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:destination.x,y:destination.y},this.spaceMap, "manhattan", this.back);
+
+		// check the path
+		if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+			this.path.reverse(); 				// reverse the path
+			this.path.push(this.target_node); 	// add target_node to the last place
+			this.path.reverse();				// reverse again
+		}
+
+		// if we are already on this.path[0], remove
+		if(this.path[0].x == this.node.x && this.path[0].y == this.node.y){
+			this.path.splice(0,1);
+		}
+	};
+	get customPath(){ return this.path;};
+
+	atIntersection(){
+		if(this.path.length == 0)
+			return true;
+			
+		for(var i = 0; i < this.intersectionMap.length; i++){
+			if(this.node.x == this.intersectionMap[i].x && this.node.y == this.intersectionMap[i].y)
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Finds the nearest space from a certain point
+	 * @param {*} node contains at least an x and y
+	 */
+	getNearestSpaceFrom(node){
+		if(!this.isWall(node.x, node.y))
+			return node;
+
+		this.closedset = [];		// nodes which have been evaluated and have no more use
+		this.openset = [];			// nodes which have been evaluated but can serve as pointer
+		this.neighbours = [];		// neighbours of the current node
+		this.openset.push(node);
+
+		while(this.openset.length !== 0){	
+			var currentNode = this.openset[0]; // get the first item from the openset
+			
+			for (let i = 0; i < this.openset.length; i++){
+				if(this.openset[i].x == currentNode.x && this.openset[i].y == currentNode.y)
+					this.openset.splice(i, 1);
+			}
+			this.closedset.push(currentNode);
+
+			// add the neighbours which just have been checked to the array
+			if(!this.inArray(this.closedset, {x:currentNode.x - 1, y:currentNode.y}))
+				this.neighbours.push({x:currentNode.x - 1, y:currentNode.y});
+			
+			if(!this.inArray(this.closedset, {x:currentNode.x + 1, y:currentNode.y}))
+				this.neighbours.push({x:currentNode.x + 1, y:currentNode.y});
+
+			if(!this.inArray(this.closedset, {x:currentNode.x, y:currentNode.y + 1}))
+				this.neighbours.push({x:currentNode.x, y:currentNode.y + 1});
+
+			if(!this.inArray(this.closedset, {x:currentNode.x, y:currentNode.y - 1}))
+				this.neighbours.push({x:currentNode.x, y:currentNode.y - 1});
+
+
+			var neighbours_length = this.neighbours.length;
+				for (let n = 0; n < neighbours_length; n++){
+					// left
+					if (!this.isWall(this.neighbours[n].x - 1, this.neighbours[n].y))
+						return {x:this.neighbours[n].x - 1, y:this.neighbours[n].y};
+					
+					// right
+					if (!this.isWall(this.neighbours[n].x + 1, this.neighbours[n].y))
+						return {x:this.neighbours[n].x + 1, y:this.neighbours[n].y};
+					
+					// down
+					if (!this.isWall(this.neighbours[n].x, this.neighbours[n].y + 1))
+						return {x:this.neighbours[n].x, y:this.neighbours[n].y + 1};
+					
+					// top
+					if (!this.isWall(this.neighbours[n].x, this.neighbours[n].y - 1))
+						return {x:this.neighbours[n].x, y:this.neighbours[n].y - 1};
+	
+					// add the currentNode to the closedset
+					this.openset.push(this.neighbours[n]);
+				}
+		}
+	}
+
+	inArray(array, node){
+		for (var i = 0; i < array.length; i++){
+			if(node.x == array[i].x && node.y == array[i].y)
+				return true;
+		}
+		return false
+	}
+
+	/**
+     * checks if a position is a wall
+     * @param {direction} x 
+     * @param {direction} y 
+     */
+    isWall(x, y){
+		var isWall = true;
+
+		// if in the box it should be treated as a wall
+		if(!(this.box[0].x < x && this.box[1].x > x && 
+			this.box[0].y < y && this.box[1].y > y)){
+			
+			for (let i = 0; i < this.spaceMap.length; i++){
+				if(this.spaceMap[i].x == x && this.spaceMap[i].y == y)
+					isWall = false;
+			}
+		}
+        return isWall;
+	}
+
+	randomDir(){
+		this.ret = [];
+		for (let i = 0; i < this.spaceMap.length; i++){
+			// the number at the end is for knowing what the back is in case we take that path
+
+			// left
+			if (this.spaceMap[i].x == this.target_node.x - 1 && this.spaceMap[i].y == this.target_node.y && this.back != 3){
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:1}); 
+			}	
+		
+			// right
+			if (this.spaceMap[i].x == this.target_node.x + 1 && this.spaceMap[i].y == this.target_node.y && this.back != 1) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:3});
+			}	
+	
+			// down
+			if (this.spaceMap[i].x == this.target_node.x && this.spaceMap[i].y == this.target_node.y + 1 && this.back != 2) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:0});
+			}	
+	
+			// top
+			if (this.spaceMap[i].x == this.target_node.x && this.spaceMap[i].y == this.target_node.y - 1 && this.back != 0) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:2});
+			}
+		}
+
+		if(this.ret.length > 0){
+			return this.ret[Math.floor(Math.random() * this.ret.length)].back;
+		}
+	}
+
+	stuckInTunnel(){
+		// if we are in a tunnel, the pathfinding will be unable to create a path,
+		// so we first move out of the tunnel
+		if(this.inTunnel() && !this.fleeing){
+			// tunnel teleport part
+			if(this.x >= 28 && this.y == 15){
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
+			else if(this.x <= 1 && this.y == 15){
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
+
+			// if stuck in tunnel tunnel
+			if(this.back == 1 && this.x < 7 && this.node.y == 15){
+				this.x -= this.speed;
+				this.path = [];
+				this.target_node.x = this.node.x - 1;
+
+				return true;
+			} else
+
+			if(this.back == 3 & this.x > 22 && this.node.y == 15){
+				this.x += this.speed;
+				this.path = [];
+				this.target_node.x = this.node.x + 1;
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	inTunnel(){
+		for(var i = 0; i < this.tunnel.length; i++){
+			if(this.target_node.x == this.tunnel[i].x && this.target_node.y == this.tunnel[i].y)
+			return true;
+		}
+
+		// else not in tunnel
+		return false;
 	}
 }
 
 class PacManAI_Otoboke{
-	constructor(){
-		// defines place to go if scattering
+	constructor(wallSettings, spaceMap, intersectionMap, tunnel, size = canvas.width / 128 /* = 15*/){
+		this.name = "Otoboke";
 		this.pathColor = "yellow";
-		this.insideGhosthouse = true;
+		this.color = 100; 		// only white or grey colors, so only one value
+		this.defspeed = 0;		// globaly set
+		this.speed = 0.1; 		// 0.022
+		this.pacmanRadius = 8; 	// circle around pacman in which Otoboke will try not to be 
+
+		this.inbox = true;				// whether the ai is in the box
+		this.leavebox = false;			// if set to true the ai will try to leave the box
+		this.enterbox = false;			// if set to true the ai will try to enter the box
+		this.disablemovement = false;	// disables the ais movement
+		this._customPath = false;
+		this.scattering = false;		// scatter boolean
+		this._fleeing = true; 			// fleeing hidden boolean, getter and setter defined in this class
+		this._fleeing_animate = false;	// whether we should change the ghost' appearance
+		this.allow_uturn = false;		// whether or not the ai may make a uturn
+		// if both are false, the AI will be chasing 
+
+		this.home = [{x: 3, y: 30}, {x: 2, y: 30}];	// place to go if scatteringing
+		this.target = {x: 0, y: 0}; 				// only used to see if our path still leads us to pacman
 
 		this.x = 16;
 		this.y = 15;
-		this.home = [
-			{x: 3, y: 30},
-			{x: 2, y: 30}
+		this.node = {
+			x:this.x,
+			y:this.y
+		};
+
+		// next node AI will move to
+		this.target_node = {
+			x:this.x,
+			y:this.y
+		};
+
+		// goal of the ai
+		this.pacmanTarget = {
+			x:0,
+			y:0
+		}
+
+		// box
+		this.box = [
+			{x:11,y:13},
+			{x:18,y:17},
 		];
+
+		// AI eat variables
+		this.eaten = {
+			state:false,
+			speed:0,		// globaly set
+
+			blinkrate:0,	// globaly set
+			blinkcurrent:0, // globaly set
+			blinkspeed:0,	// globaly set
+			blinkbool:true	// true is going on, false is going off
+		}
+
+		this.back = 3; // up = 0, right = 1, down = 2, left = 3  
+		this.radius = size;
+		
+		this.wallSettings = wallSettings;
+		this.tunnel = tunnel;
+		this.spaceMap = spaceMap;
+		this.intersectionMap = intersectionMap;
+		this.path = [];
+		
+		this.debug = false;
+	}
+	
+	/**
+	 * 
+	 * @param {Object} pacman position of the player
+	 * @param {Object} ghosts required for Kimagure AI / Inky AI
+	 */
+	update(pacman, ghosts){
+		this.updatePath(pacman);
+		this.move();
+		this.draw(this.x, this.y);
 	}
 
-	createPath(pacman, ghosts, current_path, node, next_node, back, space_map, node_tools){
-		var pacmanTarget = {x:0, y:0};
-		var pacmanRadius = 8;
+	updatePath(pacman){
+		if(this.leavebox){
+			if(!this.inbox){
+				console.log("already outside the box");
+				this.leavebox = false;
+				return;
+			}
 
-		var posx = node.x - pacman.x;
-		var posy = node.y - pacman.y;
-		if (pacmanRadius > Math.sqrt((posx * posx) + (posy * posy))){
+			this._fleeing = false;
+			this.customPath = {x:14,y:14};
+			if(this.path.length == 0){
+				this.disablemovement = true;
+
+				if(this.y >= 12)
+					this.y -= this.speed;
+				else if(this.y < 12){
+					this.y = 12;
+					this.node.y = 12; this.target_node.y = 12;
+					this.disablemovement = false;
+					this.leavebox = false;
+					this._fleeing = false;
+					this._customPath = false;
+					this.inbox = false;
+				}
+			}
+		} else
+
+		if(this.enterbox){
+			if(this.inbox){
+				console.log("already inside the box");
+				this.enterbox = false;
+				return;
+			}
+
+			this.customPath = {x:14,y:12};
+			if(this.path.length == 0){
+				this.disablemovement = true;
+
+				if(this.y <= 14)
+					this.y += this.speed;
+				else if(this.y > 14){
+					this.y = 14;
+					this.node.y = 14; this.target_node.y = 14;
+					this.disablemovement = false;
+					this.enterbox = false;
+					this._customPath = false;
+					this._fleeing = true;
+					this._fleeing_animate = false;
+					this.inbox = true;
+					this.speed = this.defspeed;
+					this.eaten.state = false;
+				}
+			}
+		} else
+		
+		// if the AI is scatteringing
+		if(this.scattering && this.atIntersection()){
+			var checkpath = false;
+		
 			//if not on home ID 1, and our target is not home ID 1, create a path
-			if(node.x == this.home[0].x && node.y == this.home[0].y){
-				path = new PacMan_PathFinding({x:next_node.x, y:next_node.y},{x:this.home[1].x,y:this.home[1].y}, space_map, "manhattan", back);
+			if(this.node.x == this.home[0].x && this.node.y == this.home[0].y && 
+				(this.target.x != this.home[1].x || this.target.y != this.home[1].y)){
+				// set our target so we don't run over this code all the time
+				this.target.x = this.home[1].x; this.target.y = this.home[1].y;
+				checkpath = true;
+
+				// debugging will return the whole class instead of only a path
+				if(this.debug){
+					this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[1].x,y:this.home[1].y},this.spaceMap, "manhattan", this.back, true);
+					this.path = this.PacMan_PathFinding.path;
+				} else
+					this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[1].x,y:this.home[1].y},this.spaceMap, "manhattan", this.back);
+			} else
+
+			// if not on home ID 0, and our target is not home ID 0, create a path
+			if(this.node.x != this.home[0].x && this.node.y != this.home[0].y &&
+				(this.target.x != this.home[0].x || this.target.y != this.home[0].y)){
+				// set our target so we don't run over this code all the time
+				this.target.x = this.home[0].x; this.target.y = this.home[0].y;
+				checkpath = true;
+
+				// debugging will return the whole class instead of only a path
+				if(this.debug){
+					this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[0].x,y:this.home[0].y},this.spaceMap, "manhattan", this.back, true);
+					this.path = this.PacMan_PathFinding.path;
+				} else
+					this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.home[0].x,y:this.home[0].y},this.spaceMap, "manhattan", this.back);
+			}
+			
+			if(checkpath){
+				// if our node we are already moving towards is not in our path, add it
+				if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+					this.path.reverse(); 				// reverse the path
+					this.path.push(this.target_node); 	// add target_node to the last place
+					this.path.reverse();				// reverse again
+				}
+
+				// if we are already on this.path[0], remove
+				if(this.path[0].x == this.node.x && this.path[0].y == this.node.y){
+					this.path.splice(0,1);
+				}
+			}
+		} else 
+		
+		if (this.atIntersection()){
+
+			var posx = this.node.x - pacman.x;
+			var posy = this.node.y - pacman.y;
+			if (this.pacmanRadius > Math.sqrt((posx * posx) + (posy * posy))){
+
+				// go to home ID 0 if to close to pacman
+				if((this.pacmanTarget.x != this.home[0].x || this.pacmanTarget.y != this.home[0].y) &&
+					(this.node.x != this.home[0].x || this.node.y != this.home[0].y)){
+
+					this.pacmanTarget.x = this.home[0].x; this.pacmanTarget.y = this.home[0].y;
+				} else
+				
+				// go to home ID 1 if just passed home ID 0
+				if((this.node.x == this.home[0].x && this.node.y == this.home[0].y) && 
+					(this.pacmanTarget.x != this.home[1].x || this.pacmanTarget.y != this.home[1].y)) {
+					checkpath = true;
+					this.pacmanTarget.x = this.home[1].x; this.pacmanTarget.y = this.home[1].y;
+
+				}
 			} else {
-				path = new PacMan_PathFinding({x:next_node.x, y:next_node.y},{x:this.home[0].x,y:this.home[0].y}, space_map, "manhattan", back,);
+				this.pacmanTarget.x = pacman.x; this.pacmanTarget.y = pacman.y;}
+
+			if(this.isWall(this.pacmanTarget.x, this.pacmanTarget.y))
+				this.pacmanTarget = this.getNearestSpaceFrom({x:this.pacmanTarget.x, y:this.pacmanTarget.y});
+
+			if((this.pacmanTarget.x != this.target.x || this.pacmanTarget.y != this.target.y) || this.path.length == 0){
+				if(!this.stuckInTunnel() && !this.fleeing && !this.scattering && !this.eaten.state){
+					// debugging will return the whole class instead of only a path
+					if(this.debug){
+						this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.pacmanTarget.x,y:this.pacmanTarget.y},this.spaceMap, "manhattan", this.back, true);
+						this.path = this.PacMan_PathFinding.path;
+					} else
+						this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:this.pacmanTarget.x,y:this.pacmanTarget.y},this.spaceMap, "manhattan", this.back);
+
+					// if our node we are already moving towards is not in our path, add it
+					if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+						this.path.reverse(); 				// reverse the path
+						this.path.push(this.target_node); 	// add target_node to the last place
+						this.path.reverse();				// reverse again
+					}
+
+					this.target.x = this.pacmanTarget.x; this.target.y = this.pacmanTarget.y;
+				}
+			}
+		}
+
+		// fleeing is random at each intersection so we have a complete seperate move function for it
+
+		// show chosen path and examined paths
+		if(this.debug){
+			for(var i = 0; i < this.path.length; i++){
+				ctx.fillStyle = "yellow";
+				ctx.font = "30px Arial";
+				ctx.beginPath();
+				ctx.fillText(this.path[i].h, this.path[i].x * 28 + 9, (this.path[i].y + 0.5) * 28 + 9);
+				ctx.stroke();
 			}
 
-			// if our node we are already moving towards is not in our path, add it
-			if(path[0].x != next_node.x || path[0].y != next_node.y){
-				path.reverse(); 			// reverse the path
-				path.push(next_node); 		// add target_node to the last place
-				path.reverse();				// reverse again
+			for(var i = 0; i < this.PacMan_PathFinding.closedset.length; i++){
+				ctx.fillStyle = "yellow";
+				ctx.font = "10px Arial";
+					ctx.beginPath();
+					ctx.fillText(this.PacMan_PathFinding.closedset[i].h,this.PacMan_PathFinding.closedset[i].x * 28 + 9, (this.PacMan_PathFinding.closedset[i].y + 0.5) * 28 + 9);
+					ctx.stroke();
+			}
+		}
+	}
+	
+	move(){
+		// EXPLANATION OF THE MOVE CODE
+		/*
+		if(this.x < this.path[0].x){
+			if(this.x + this.speed > this.node.x + 1){	// if our movespeed moves the AI past the target
+				this.x = this.node.x = this.path[0].x;  // update the position to the target
+				if(this.path.length != 0)
+					this.path.splice(0,1);				// remove the target from the path
+
+				this.back = 4;
+			} else if(this.y == Math.round(this.y)){	// if the AI is on a round y line
+				this.x += this.speed;					// move the AI
+				this.back = 4;							// set the back of the AI so he can't uturn
+				this.target_node.x = this.node.x + 1; 	// make the target node always one further
+			}
+		}
+
+		// teleporting
+		// target_node must be always one ahead of the AI
+		if(this.x >= 28 && this.y == 15){
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
+			else if(this.x <= 1 && this.y == 15){
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
+		*/
+
+		// just prevent movement
+		if(this.disablemovement) {} else
+
+		// if fleeing
+		if(this.fleeing){
+			// tunnel teleport part
+			if(this.x >= 28 && this.y == 15){
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
+			else if(this.x <= 1 && this.y == 15){
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
+
+			if(this.back == 3){
+				if(this.x + this.speed > this.node.x + 1){
+					this.x = this.node.x + 1; 
+					this.node.x += 1;
+					
+					if(this.allow_uturn){
+						this.back = 1;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.y == Math.round(this.y)){
+					this.x += this.speed;
+					this.target_node.x = this.node.x + 1;
+				}
 			}
 
-			// if we are already on this.path[0], remove
-			if(path[0].x == node.x && path[0].y == node.y){
-				path.splice(0,1);
+			if(this.back == 1){
+				if(this.x - this.speed < this.node.x - 1){
+					this.x = this.node.x -= 1; 
+					
+					if(this.allow_uturn){
+						this.back = 3;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.y == Math.round(this.y)){
+					this.x -= this.speed; 
+					this.target_node.x = this.node.x - 1;
+				}
 			}
 
-			return path;
+			if(this.back == 0){
+				if(this.y + this.speed > this.node.y + 1){
+					this.y = this.node.y += 1; 
+					
+					if(this.allow_uturn){
+						this.back = 2;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.x == Math.round(this.x)){
+					this.y += this.speed; 
+					this.target_node.y = this.node.y + 1;
+				}
+			}
 
+			if(this.back == 2){
+				if(this.y - this.speed < this.node.y - 1){
+					this.y = this.node.y -= 1; 
+					
+					if(this.allow_uturn){
+						this.back = 0;
+						this.allow_uturn = false;
+					} else
+						this.back = this.randomDir();
+				} else if(this.x == Math.round(this.x)){
+					this.y -= this.speed;
+					this.target_node.y = this.node.y - 1;
+				}	
+			}
+
+			if(this.x == this.target_node.x || this.y == this.target_node.y){
+				// calculate the AI nodes
+				if(this.back == 0)
+					this.node.y = Math.floor(this.y);
+
+				if(this.back == 1)
+					this.node.x = Math.ceil(this.x);
+
+				if(this.back == 2)
+					this.node.y = Math.ceil(this.y);
+
+				if(this.back == 3)
+					this.node.x = Math.floor(this.x);
+			}
 		} else
-		// if pacman leaves the target tile, calculate a new path to that target tile
-		if(current_path.length == 0 || (pacman.x != current_path[current_path.length - 1].x || pacman.y != current_path[current_path.length - 1].y)){
-			var path = [];
 
-			// debugging will return the whole class instead of only a path
-			path = new PacMan_PathFinding({x:next_node.x, y:next_node.y},{x:pacman.x,y:pacman.y}, space_map, "manhattan", back);
+		// if following a created path
+		if(this.path[0] != undefined){
+			if(this.x < this.path[0].x){
+				if(this.x + this.speed > this.node.x + 1){
+					this.x = this.path[0].x;  			
+					this.back = 3;
+				} else if(this.y == Math.round(this.y)){
+					this.x += this.speed;				
+					this.back = 3;						
+					this.target_node.x = this.node.x + 1;
+				}
+			} else
+			
+			if(this.x > this.path[0].x){
+				if(this.x - this.speed < this.node.x - 1){
+					this.x = this.path[0].x; 
+					this.back = 1;
+				} else if(this.y == Math.round(this.y)){
+					this.x -= this.speed; 
+					this.back = 1;
+					this.target_node.x = this.node.x - 1;
+				}	
+			} else
 
-			// if our node we are already moving towards is not in our path, add it
-			if(path[0].x != next_node.x || path[0].y != next_node.y){
-				path.reverse(); 			// reverse the path
-				path.push(next_node); 		// add next_node to the last place
-				path.reverse();				// reverse again
+			if(this.y < this.path[0].y){
+				if(this.y + this.speed > this.node.y + 1){
+					this.y = this.path[0].y; 
+					this.back = 0;	
+				} else if(this.x == Math.round(this.x)){
+					this.y += this.speed; 
+					this.back = 0;
+					this.target_node.y = this.node.y + 1;
+				}
+			} else
+			
+			if(this.y > this.path[0].y){
+				if(this.y - this.speed < this.node.y - 1){
+					this.y = this.path[0].y; 
+					this.back = 2;
+				} else if(this.x == Math.round(this.x)){
+					this.y -= this.speed;
+					this.back = 2;
+					this.target_node.y = this.node.y - 1;
+				}	
 			}
 
-			return path;
+			if(this.x == this.path[0].x && this.y == this.path[0].y){
+				// calculate the AI nodes
+				if(this.back == 0)
+					this.node.y = Math.floor(this.y);
+
+				if(this.back == 1)
+					this.node.x = Math.ceil(this.x);
+
+				if(this.back == 2)
+					this.node.y = Math.ceil(this.y);
+
+				if(this.back == 3)
+					this.node.x = Math.floor(this.x);
+
+
+				// rebuild path
+				if(this.path.length != 0){
+					this.path.splice(0,1);
+				} 
+			}
+		}	
+	}
+
+	draw(x, y){
+		if(this.eaten.state){
+			if(this.eaten.blinkbool){ // going on
+				this.eaten.blinkcurrent -= this.eaten.blinkspeed;
+				if (this.eaten.blinkcurrent <= 0){
+					this.eaten.blinkcurrent = 0;
+					this.eaten.blinkbool = false;
+				}
+			} else { // going off
+				this.eaten.blinkcurrent += this.eaten.blinkspeed;
+				if (this.eaten.blinkcurrent >= this.eaten.blinkrate){
+					this.eaten.blinkcurrent = this.eaten.blinkrate;
+					this.eaten.blinkbool = true;
+				}
+			}   
+
+			var color = (this.eaten.blinkcurrent / this.eaten.blinkrate) * this.color;
+			ctx.strokeStyle="rgb("+ color + "," + color + "," + color + ")"; 
 		} else
-			return current_path;
+			ctx.strokeStyle="rgb("+ this.color + "," + this.color + "," + this.color + ")"; 
+
+		ctx.lineWidth = this.wallSettings.border_thickness - 2;
+		
+		x += 0.5;	// position correction
+		y += 0.5;	// position correction
+
+		ctx.beginPath();
+		ctx.arc(x * this.wallSettings.size, y * this.wallSettings.size, this.radius, Math.PI, 0, false);
+		ctx.moveTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size);
+
+		// LEGS
+		if (this._fleeing_animate){
+			ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius-this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius-this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius/3, y * this.wallSettings.size + this.radius - this.radius / 4);	
+			ctx.lineTo(x * this.wallSettings.size + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
+		} else {
+			ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size - this.radius + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius / 3, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + (this.radius / 3) * 2, y * this.wallSettings.size + this.radius - this.radius / 4);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius);
+			ctx.lineTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
+		}
+
+		ctx.moveTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size);
+		ctx.lineTo(x * this.wallSettings.size - this.radius / 3, y * this.wallSettings.size - this.radius);
+		
+		ctx.moveTo(x * this.wallSettings.size + this.radius, y * this.wallSettings.size + this.radius / 2);
+		ctx.lineTo(x * this.wallSettings.size - this.radius / 1.5, y * this.wallSettings.size - this.radius / 1.35);
+
+		ctx.moveTo(x * this.wallSettings.size + this.radius / 1.1, y * this.wallSettings.size + this.radius / 1.1);
+		ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size - this.radius / 2);
+
+		ctx.moveTo(x * this.wallSettings.size + this.radius / 7, y * this.wallSettings.size + this.radius - this.radius / 7);
+		ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size); // just a small number
+		
+		ctx.moveTo(x * this.wallSettings.size - this.radius + this.radius / 3, y * this.wallSettings.size + this.radius - this.radius / 4);
+		ctx.lineTo(x * this.wallSettings.size - this.radius, y * this.wallSettings.size + this.radius - this.radius / 2);
+		ctx.stroke(); 
+	}
+
+	set fleeing(state){
+		if(!this.inbox)
+			this._fleeing = state;
+			
+		this._fleeing_animate = state;
+		if(state){
+			this.path = [];
+			this.allow_uturn = true;
+		}
+	};
+	get fleeing(){ return this._fleeing;};
+
+	/**
+	 * customPath requires an x and y in one var, and returns a path, but its hidden vallue will be a boolean
+	 */
+	set customPath(destination){
+		this._customPath = true;
+
+		// debugging will return the whole class instead of only a path
+		if(this.debug){
+			this.PacMan_PathFinding = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:destination.x,y:destination.y},this.spaceMap, "manhattan", this.back, true);
+			this.path = this.PacMan_PathFinding.path;
+		} else
+			this.path = new PacMan_PathFinding({x:this.target_node.x, y:this.target_node.y},{x:destination.x,y:destination.y},this.spaceMap, "manhattan", this.back);
+
+		// check the path
+		if(this.path[0].x != this.target_node.x || this.path[0].y != this.target_node.y){
+			this.path.reverse(); 				// reverse the path
+			this.path.push(this.target_node); 	// add target_node to the last place
+			this.path.reverse();				// reverse again
+		}
+
+		// if we are already on this.path[0], remove
+		if(this.path[0].x == this.node.x && this.path[0].y == this.node.y){
+			this.path.splice(0,1);
+		}
+	};
+	get customPath(){ return this.path;};
+
+	atIntersection(){
+		if(this.path.length == 0)
+			return true;
+
+		for(var i = 0; i < this.intersectionMap.length; i++){
+			if(this.node.x == this.intersectionMap[i].x && this.node.y == this.intersectionMap[i].y)
+				return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Finds the nearest space from a certain point
+	 * @param {*} node contains at least an x and y
+	 */
+	getNearestSpaceFrom(node){
+		if(!this.isWall(node.x, node.y))
+			return node;
+
+		this.closedset = [];		// nodes which have been evaluated and have no more use
+		this.openset = [];			// nodes which have been evaluated but can serve as pointer
+		this.neighbours = [];		// neighbours of the current node
+		this.openset.push(node);
+
+		while(this.openset.length !== 0){	
+			var currentNode = this.openset[0]; // get the first item from the openset
+			
+			for (let i = 0; i < this.openset.length; i++){
+				if(this.openset[i].x == currentNode.x && this.openset[i].y == currentNode.y)
+					this.openset.splice(i, 1);
+			}
+			this.closedset.push(currentNode);
+
+			// add the neighbours which just have been checked to the array
+			if(!this.inArray(this.closedset, {x:currentNode.x - 1, y:currentNode.y}))
+				this.neighbours.push({x:currentNode.x - 1, y:currentNode.y});
+			
+			if(!this.inArray(this.closedset, {x:currentNode.x + 1, y:currentNode.y}))
+				this.neighbours.push({x:currentNode.x + 1, y:currentNode.y});
+
+			if(!this.inArray(this.closedset, {x:currentNode.x, y:currentNode.y + 1}))
+				this.neighbours.push({x:currentNode.x, y:currentNode.y + 1});
+
+			if(!this.inArray(this.closedset, {x:currentNode.x, y:currentNode.y - 1}))
+				this.neighbours.push({x:currentNode.x, y:currentNode.y - 1});
+
+
+			var neighbours_length = this.neighbours.length;
+			for (let n = 0; n < neighbours_length; n++){
+				// left
+				if (!this.isWall(this.neighbours[n].x - 1, this.neighbours[n].y))
+					return {x:this.neighbours[n].x - 1, y:this.neighbours[n].y};
+				
+				// right
+				if (!this.isWall(this.neighbours[n].x + 1, this.neighbours[n].y))
+					return {x:this.neighbours[n].x + 1, y:this.neighbours[n].y};
+				
+				// down
+				if (!this.isWall(this.neighbours[n].x, this.neighbours[n].y + 1))
+					return {x:this.neighbours[n].x, y:this.neighbours[n].y + 1};
+				
+				// top
+				if (!this.isWall(this.neighbours[n].x, this.neighbours[n].y - 1))
+					return {x:this.neighbours[n].x, y:this.neighbours[n].y - 1};
+
+				// add the currentNode to the closedset
+				this.openset.push(this.neighbours[n]);
+			}
+		}
+	}
+
+	inArray(array, node){
+		for (var i = 0; i < array.length; i++){
+			if(node.x == array[i].x && node.y == array[i].y)
+				return true;
+		}
+		return false
+	}
+
+	/**
+     * checks if a position is a wall
+     * @param {direction} x 
+     * @param {direction} y 
+     */
+    isWall(x, y){
+		var isWall = true;
+		
+        // if in the box it should be treated as a wall
+		if(!(this.box[0].x < x && this.box[1].x > x && 
+			this.box[0].y < y && this.box[1].y > y)){
+			
+			for (let i = 0; i < this.spaceMap.length; i++){
+				if(this.spaceMap[i].x == x && this.spaceMap[i].y == y)
+					isWall = false;
+			}
+		}
+        return isWall;
+	}
+
+	randomDir(){
+		this.ret = [];
+		for (let i = 0; i < this.spaceMap.length; i++){
+			// the number at the end is for knowing what the back is in case we take that path
+
+			// left
+			if (this.spaceMap[i].x == this.target_node.x - 1 && this.spaceMap[i].y == this.target_node.y && this.back != 3){
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:1}); 
+			}	
+		
+			// right
+			if (this.spaceMap[i].x == this.target_node.x + 1 && this.spaceMap[i].y == this.target_node.y && this.back != 1) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:3});
+			}	
+	
+			// down
+			if (this.spaceMap[i].x == this.target_node.x && this.spaceMap[i].y == this.target_node.y + 1 && this.back != 2) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:0});
+			}	
+	
+			// top
+			if (this.spaceMap[i].x == this.target_node.x && this.spaceMap[i].y == this.target_node.y - 1 && this.back != 0) {
+				this.ret.push({x:this.spaceMap[i].x, y:this.spaceMap[i].y, cost:this.spaceMap[i].cost, back:2});
+			}
+		}
+
+		if(this.ret.length > 0){
+			return this.ret[Math.floor(Math.random() * this.ret.length)].back;
+		}
+	}
+
+	stuckInTunnel(){
+		// if we are in a tunnel, the pathfinding will be unable to create a path,
+		// so we first move out of the tunnel
+		if(this.inTunnel() && !this.fleeing){
+			// tunnel teleport part
+			if(this.x >= 28 && this.y == 15){
+				this.x = 2; this.node.x = 2; this.target_node.x = 3; return false;} 
+			else if(this.x <= 1 && this.y == 15){
+				this.x = 27; this.node.x = 27; this.target_node.x = 26; return false;}
+
+			// if stuck in tunnel tunnel
+			if(this.back == 1 && this.x < 7 && this.node.y == 15){
+				this.x -= this.speed;
+				this.path = [];
+				this.target_node.x = this.node.x - 1;
+
+				return true;
+			} else
+
+			if(this.back == 3 & this.x > 22 && this.node.y == 15){
+				this.x += this.speed;
+				this.path = [];
+				this.target_node.x = this.node.x + 1;
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	inTunnel(){
+		for(var i = 0; i < this.tunnel.length; i++){
+			if(this.target_node.x == this.tunnel[i].x && this.target_node.y == this.tunnel[i].y)
+			return true;
+		}
+
+		// else not in tunnel
+		return false;
 	}
 }

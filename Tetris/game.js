@@ -1,368 +1,389 @@
-function Tetris(){
-    new MenuInterface();
+function Tetris() {
+	if(typeof gameInterval !== "undefined")
+	gameInterval.stop();
 
-    interfaces.menu.object.backgroundGame = new TetrisGame();
-    interfaces.menu.object.buttons = [
-		["GO TO HUB", "loadingBar('hub', 'new HubInterface')"],
-		["HIGH SCORES", "new HighScoresInterface('" + currentGame + "', 0)"],
-        ["START GAME", "newTetrisGame()"]
+	if(typeof overlayInterval !== "undefined")
+        overlayInterval.stop();
+	
+	menuOverlay = new MenuOverlay();
+	TetrisMainMenuOverlay();
+	
+	menuOverlay.backgroundGame = new TetrisGame(true);
+    menuOverlay.backgroundGame.overlay = true;
+	tetrisGame = menuOverlay.backgroundGame;
+	
+	move.smooth = false;
+	
+	overlayInterval = new Interval(function(){ 
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		menuOverlay.update();
+	}, 20);
+}
+
+function TetrisMainMenuOverlay() {
+	menuOverlay.buttons = [
+		new Button(53, canvas.height - 268, 300, 30, "START GAME", "newTetrisGame(false)"),
+		new Button(53, canvas.height - 188, 300, 30, "HIGH SCORES", "loadHighscores('" + currentGame + "', 0,true)"),
+		new Button(53, canvas.height - 108, 300, 30, "HOW TO PLAY", "loadInstructions()"),
+		new Button(53, canvas.height - 28, 300, 30, "EXIT", "loadHub()")
 	];
 }
 
-function newTetrisGame(){
-    exit_open_game();
-    exit_open_interfaces();
-	
-	interfaces.game.object = new TetrisGame();
-	
-	interfaces.game.interval = new Interval(function(){ 
-		interfaces.game.object.update();
-	}, 15);
+var blockWidth = 53;
+
+function vector(y,x) {
+	this.y = y;
+	this.x = x;
 }
 
-class TetrisGame{
-    constructor(){
-        // build the playground
-        this.gridcollums = 16;
-        this.gridrows = 20;
-        this.grid = [];
-        for(let r = 0; r < this.gridrows; r++)
-            this.grid.push(new Array(this.gridcollums).fill(0))
+var tetrisGame;
 
-        this.window_scale = window.height / 1080
-        this.blockSize = 40 * this.window_scale;
-        this.gameover = false;
-
-        this.initCanvas();
-
-        this.player = new TetrisPlayer();
-        this.player.position.x = Math.ceil(this.grid[0].length / 2) - 1;
-        
-        // timers (60 = 1 second)
-        this.dropTimer = 0;
-        this.dropInterval = 60;
-        this.dropMinInterval = 14;
-        this.gameoverTimer = 240;
-
-        if(!interfaces.menu.active){
-            // keychecking
-            move._left.setEventListener(() => {
-                this.player.position.x--;
-                if(this.MatrixCollides())
-                    this.player.position.x++;
-            });
-            move._right.setEventListener(() => {
-                this.player.position.x++;
-                if(this.MatrixCollides())
-                    this.player.position.x--;
-            });
-
-            move._down.continuous = true;
-            move._down.setEventListener(() => {
-                this.dropTimer++;
-                if(this.dropTimer >= this.dropMinInterval){
-                    this.player.position.y++;
-                    this.dropTimer = 0;
-                }
-            });
-        }
-
-        if(!interfaces.menu.active){
-            this.UpdateQueueCanvas();
-            this.UpdateScoreCanvas();
-        }
-    }
-
-    update(){
-        if(!this.gameover){
-            if ((gmap[0].buttonA || map[13]) && !interfaces.menu.active){
-                this.player.RotateMatrix();
-                if(this.MatrixCollides())           // if we collide with a wall
-                    this.player.RotateMatrix(1);    // rotate back
-
-                map[13] = false;
-                gmap[0].buttonA = false;
-            }
-
-            this.updateCurrentMatrixPosition();
-            if(this.MatrixCollides()){
-                // can we place new blocks on the first line without collision?
-                if(this.player.position.y === 0)
-                    if(!interfaces.menu.active)
-                        this.gameover = true;
-                    else { // if we are in the menu, just clear the grid
-                        this.grid = [];
-                        for(let r = 0; r < this.gridrows; r++)
-                            this.grid.push(new Array(this.gridcollums).fill(0))
-                    }
-
-                else {
-                    this.MergeMatrixWithGrid();
-                    this.player.position.x = Math.floor(this.grid[0].length / 2) - 1;
-                    this.player.ShiftQueue();
-                    if(!interfaces.menu.active)
-                        this.UpdateQueueCanvas();
-                }
-            }
-            this.UpdateGridCanvas();
-        } else {
-            this.gameoverTimer--;
-            // game over
-            if (this.gameoverTimer > 180) {
-                this.ctx.strokeStyle = "black";
-                this.ctx.strokeText("GAME OVER", this.canvas.width / 2, this.canvas.height / 3);
-                this.ctx.fillText("GAME OVER", this.canvas.width / 2, this.canvas.height / 3);
-            } 
-            if(this.gameoverTimer <= 0) {
-                new HighScoresInterface(currentGame, this.player.score);
-            }
-        }
-    }
-
-    // creates all required windowes
-    initCanvas(){
-        let TetrisGameCanvas = document.createElement('canvas');
-        TetrisGameCanvas.id = 'TetrisGameCanvas';
-        TetrisGameCanvas.width = this.gridcollums * this.blockSize + 4;
-        TetrisGameCanvas.height = this.gridrows * this.blockSize + 4;
-        TetrisGameCanvas.style.left = (window.width / 2) - TetrisGameCanvas.width / 2;
-        TetrisGameCanvas.style.top = (window.height / 6) * 0.5;
-        TetrisGameCanvas.style.zIndex = 1;
-        TetrisGameCanvas.style.position = "absolute";
-        TetrisGameCanvas.style.cursor = "none";
-        document.body.appendChild(TetrisGameCanvas);
-
-        this.canvas = document.getElementById("TetrisGameCanvas");		// window stuff
-        this.ctx = this.canvas.getContext("2d");			        // window stuff
-        
-        this.ctx.strokeStyle = "#ffffff";
-        this.ctx.fillStyle = "white";
-        this.ctx.lineWidth = 4;
-        this.ctx.textAlign = "center";
-		this.ctx.font = "100px segoe ui";
+class TetrisGame {
+	constructor(backgroundGame) {
+		this.backgroundGame = backgroundGame;
+		this.gameCounter = 0;
+		this.moveDownSpeed = 20;
+		this.maxY = 0;
+		this.maxLeft = 0;
+		this.maxRight = 0;
+		this.fullRowY = 0;
+		this.staticBlocks = [];
+		this.nextBlocks = [randomNumber(0,7),randomNumber(0,7)]; //next blocks to view
+		this.field = new grid(canvas.width/2 - 16*blockWidth/2,10,16,20);
+		this.firstLoop = true;
+		this.testMoveUp = true;
+		this.rowCounter = 0;
+		this.score = 0;
+		this.level = 1;
+		this.assignedScore = true;
+		this.gameOver = false;
+		this.gameOverCounter = 0;
+		this.gamemode = "";
+		//cheat sheet positions: 
 		
-        if(!interfaces.menu.active){
-            let TetrisNextCanvas = document.createElement('canvas');
-            TetrisNextCanvas.id = 'TetrisNextCanvas';
-            TetrisNextCanvas.width = window.width / 8;
-            TetrisNextCanvas.height = (window.height / 6) * 4.5;
-            TetrisNextCanvas.style.left = (window.width * (3/4)) //+ window.width / 4;
-            TetrisNextCanvas.style.top = (window.height / 6) * 0.5;
-            TetrisNextCanvas.style.zIndex = 1;
-            TetrisNextCanvas.style.position = "absolute";
-            TetrisNextCanvas.style.cursor = "none";
-            document.body.appendChild(TetrisNextCanvas);
-
-            this.TetrisNextCanvas = document.getElementById("TetrisNextCanvas");		// window stuff
-            this.TetrisNextCtx = this.TetrisNextCanvas.getContext("2d");			        // window stuff
-
-            this.TetrisNextCtx.strokeStyle = "#ffffff";
-            this.TetrisNextCtx.fillStyle = "white";
-            this.TetrisNextCtx.lineWidth = 5;
-            this.TetrisNextCtx.font = "50px segoe ui";
-            this.TetrisNextCtx.textAlign = "center";
-
-
-            let TetrisScoreCanvas = document.createElement('canvas');
-            TetrisScoreCanvas.id = 'TetrisScoreCanvas';
-            TetrisScoreCanvas.width = window.width / 8;
-            TetrisScoreCanvas.height = (window.height / 6) * 4.5;
-            TetrisScoreCanvas.style.left = window.width / 8;
-            TetrisScoreCanvas.style.top = (window.height / 6) * 0.5;
-            TetrisScoreCanvas.style.zIndex = 1;
-            TetrisScoreCanvas.style.position = "absolute";
-            TetrisScoreCanvas.style.cursor = "none";
-            document.body.appendChild(TetrisScoreCanvas);
-
-            this.TetrisScoreCanvas = document.getElementById("TetrisScoreCanvas");		// window stuff
-            this.TetrisScoreCtx = this.TetrisScoreCanvas.getContext("2d");			        // window stuff
-
-            this.TetrisScoreCtx.strokeStyle = "#ffffff";
-            this.TetrisScoreCtx.fillStyle = "white";
-            this.TetrisScoreCtx.lineWidth = 5;
-            this.TetrisScoreCtx.font = "50px segoe ui";
-            this.TetrisScoreCtx.textAlign = "center";
-
-        }
-    }
-
-    UpdateScoreCanvas(){
-        this.TetrisScoreCtx.clearRect(0, 0, this.TetrisScoreCanvas.width, this.TetrisScoreCanvas.height);
-
-		this.TetrisScoreCtx.fillText("SCORE",this.TetrisScoreCanvas.width / 2, this.TetrisScoreCanvas.height * 0.1);
+		//fieldWidth = 16*blockWidth
+		//space between field and screen = canvas.width/2 - 16*blockWidth/2
 		
-		this.TetrisScoreCtx.beginPath();
-		this.TetrisScoreCtx.moveTo(this.TetrisScoreCanvas.width - this.TetrisScoreCanvas.width * 0.9, this.TetrisScoreCanvas.height * 0.15);
-		this.TetrisScoreCtx.lineTo(this.TetrisScoreCanvas.width * 0.9, this.TetrisScoreCanvas.height * 0.15);
-        this.TetrisScoreCtx.stroke();
-
-        this.TetrisScoreCtx.fillText(this.player.score,this.TetrisScoreCanvas.width / 2, this.TetrisScoreCanvas.height * 0.25);
-
-
-		this.TetrisScoreCtx.fillText("COMBO",this.TetrisScoreCanvas.width / 2, this.TetrisScoreCanvas.height * 0.4);
+		this.nextWindow = new windowNext(canvas.width/2 - 16*blockWidth/2 + 16*blockWidth + (0.5*(canvas.width/2 - 16*blockWidth/2)),150);
+		this.currentBlock = new movingBlock(this.field.width * blockWidth / 2 + this.field.x, this.field.y, randomShape());
+	}
+	
+	spawnPreShapes() {
+		spawnShape(shape0,this.field.x + 4*blockWidth, this.field.y + this.field.height*blockWidth - 4*blockWidth);
+		spawnShape(shape1,this.field.x + 4*blockWidth, this.field.y + this.field.height*blockWidth - 6*blockWidth);
+		// console.log("TESTTT");
+	}
+	
+	newBlock() {
+		if (!tetrisGame.gameOver) {
+			tetrisGame.score += 10*(tetrisGame.level + 1);
+			for (let i = 0; i < tetrisGame.currentBlock.blocks.length; i++) {
+				tetrisGame.staticBlocks.push(tetrisGame.currentBlock.blocks[i]);
+			}
+			let shape = eval(tetrisGame.nextWindow.content[0]); //use eval to get 'shape' the value of the actual object instead of the 'stringed' object
+			let testShape = new shape;
+			for (let b = 0; b < tetrisGame.staticBlocks.length; b++) {
+				for (let i = 0; i < testShape.positions.length; i++) {
+					var pos = {
+						x: tetrisGame.field.width * blockWidth / 2 + tetrisGame.field.x + testShape.positions[i].x,
+						y: tetrisGame.field.y + testShape.positions[i].y
+					}
+				}
+				if (pos.x == tetrisGame.staticBlocks[b].x && pos.y == tetrisGame.staticBlocks[b].y) {
+					tetrisGame.gameOver = true;
+				}
+			}
+			
+			if (!tetrisGame.backgroundGame) {
+				tetrisGame.currentBlock = new movingBlock(tetrisGame.field.width * blockWidth / 2 + tetrisGame.field.x, tetrisGame.field.y, shape); //now pass the shape object
+			} else {
+				tetrisGame.currentBlock = new movingBlock(Math.floor((Math.random() * 13))*blockWidth + tetrisGame.field.x, tetrisGame.field.y, shape); //now pass the shape object
+			}
+			
+			tetrisGame.nextBlocks.splice(0,1);
+			tetrisGame.nextBlocks.push(randomNumber(0,7));
+			tetrisGame.nextWindow.updateContent();
+		}
+	}
+	
+	update() {
+		if (tetrisGame.firstLoop) {
+			//spawn blocks pre game: (for testing purposes);
+			// tetrisGame.spawnPreShapes();
+			
+			tetrisGame.firstLoop = false;
+		}
 		
-		this.TetrisScoreCtx.beginPath();
-		this.TetrisScoreCtx.moveTo(this.TetrisScoreCanvas.width - this.TetrisScoreCanvas.width * 0.9, this.TetrisScoreCanvas.height * 0.45);
-        this.TetrisScoreCtx.lineTo(this.TetrisScoreCanvas.width * 0.9, this.TetrisScoreCanvas.height * 0.45);
-        
-        this.TetrisScoreCtx.fillText(this.player.combo,this.TetrisScoreCanvas.width / 2, this.TetrisScoreCanvas.height * 0.55);
-        this.TetrisScoreCtx.stroke();
-    }
-
-    // draws the queue
-    UpdateQueueCanvas(){    
-        this.TetrisNextCtx.clearRect(0, 0, this.TetrisNextCanvas.width, this.TetrisNextCanvas.height);
-		this.TetrisNextCtx.fillText("NEXT",this.TetrisNextCanvas.width / 2, this.TetrisNextCanvas.height * 0.1);
+		// console.log(tetrisGame.nextBlocks);
+		for (let i = 0; i < tetrisGame.staticBlocks.length; i++) { //clear all rectangles at y = -300
+			if (tetrisGame.staticBlocks[i].y == -300) {
+				tetrisGame.staticBlocks.splice(i,1);
+			}
+		}
 		
-		this.TetrisNextCtx.beginPath();
-		this.TetrisNextCtx.moveTo(this.TetrisNextCanvas.width - this.TetrisNextCanvas.width * 0.9, this.TetrisNextCanvas.height * 0.145);
-		this.TetrisNextCtx.lineTo(this.TetrisNextCanvas.width * 0.9, this.TetrisNextCanvas.height * 0.145);
-        this.TetrisNextCtx.stroke();
+		ctx.clearRect(0,0,canvas.width,canvas.height);
+	ctx.save();
+ctx.scale(0.75,0.75);
+ctx.translate(240,screen.height*0.1);
+		if (!tetrisGame.backgroundGame) {
+			ctx.filLStyle = "#fff";
+			ctx.font = "50px segoe ui";
+			ctx.fillText("SCORE", 0.5*(screen.width/2 - 32*blockWidth/2),150);
+			ctx.beginPath();
+			ctx.moveTo(0.5*(screen.width/2 - 26.3*blockWidth/2) - 75, 150 + 25);
+			ctx.lineTo(0.5*(screen.width/2 - 26.3*blockWidth/2) + 75, 150 + 25);
+			ctx.strokeStyle = "#fff";
+			ctx.stroke();
+			ctx.font = "80px segoe ui";
+			ctx.textAlign = "center";
+			ctx.fillText(tetrisGame.score, 0.5*(screen.width/2 - 26.5*blockWidth/2),300);
+		}
+	
+		tetrisGame.currentBlock.update();
+		tetrisGame.field.update();
+		tetrisGame.nextWindow.update();
+		
+		if ((map[40] || map.Button0) && !tetrisGame.backgroundGame) { //not using move because move.smooth is only needed for one key, which is not currently supported.
+			tetrisGame.moveDownSpeed = 4;
+		} else if (map[32] && !tetrisGame.backgroundGame) {
+			tetrisGame.moveDownSpeed = 999999999;
+		} else {
+			tetrisGame.moveDownSpeed = 20;
+		}
+		
+		if (tetrisGame.gameCounter < tetrisGame.moveDownSpeed) {
+			tetrisGame.gameCounter++;
+		} else {
+			tetrisGame.currentBlock.y += blockWidth;
+			if (tetrisGame.currentBlock.moveDown) {
+				for (let i = 0; i < tetrisGame.currentBlock.blocks.length; i++) {
+					tetrisGame.currentBlock.blocks[i].y += blockWidth;
+				}
+			} else {
+				for (let i = 0; i < tetrisGame.staticBlocks.length; i++) {
+					for (let b = 0; b < tetrisGame.currentBlock.blocks.length; b++) {
+						if ((tetrisGame.staticBlocks[i].x == tetrisGame.currentBlock.blocks[b].x && tetrisGame.staticBlocks[i].y == tetrisGame.currentBlock.blocks[b].yMax) && !tetrisGame.gameOver) {
+							tetrisGame.newBlock();
+							break;
+						} else {
+							tetrisGame.currentBlock.moveDown = true;
+						}
+					}
+				}
+			}
+			tetrisGame.gameCounter = 0;
+		}
+		
+		//check for block with the highest y value and get it's index: (to check if bottom of shape touches bottom of field)
+		//also check for left x and right x
+		for (let i = 0; i < tetrisGame.currentBlock.blocks.length; i++) {
+			if (i == 0) {
+				tetrisGame.maxY = 0;
+				tetrisGame.maxLeft = 0;
+				tetrisGame.maxLeft = 0;
+			}
+			if (tetrisGame.currentBlock.blocks[i].y > tetrisGame.currentBlock.blocks[tetrisGame.maxY].y) {
+				tetrisGame.maxY = i;
+			}
+			if (tetrisGame.currentBlock.blocks[i].x < tetrisGame.currentBlock.blocks[tetrisGame.maxLeft].x) {
+				tetrisGame.maxLeft = i;
+			}
+			if (tetrisGame.currentBlock.blocks[i].xMax > tetrisGame.currentBlock.blocks[tetrisGame.maxRight].xMax) {
+				tetrisGame.maxRight = i;
+			}
+			// console.log(tetrisGame.currentBlock.blocks[tetrisGame.maxLeft].x);
+		}
+		
+		//if bottom of shape touches a y position, spawn new block
+		if (tetrisGame.currentBlock.blocks[tetrisGame.maxY].yMax > (tetrisGame.field.height - 1) * blockWidth + tetrisGame.field.y) { 
+			tetrisGame.newBlock();
+		}
+ctx.translate(-125,0);
+		for (let i = 0; i < tetrisGame.staticBlocks.length; i++) {
+			tetrisGame.staticBlocks[i].update();
+		}
+ctx.translate(125,0);
+		//check for collision
+		for (let i = 0; i < tetrisGame.staticBlocks.length; i++) {
+			for (let b = 0; b < tetrisGame.currentBlock.blocks.length; b++) {
+				if (tetrisGame.staticBlocks[i].x == tetrisGame.currentBlock.blocks[b].x && tetrisGame.staticBlocks[i].y == tetrisGame.currentBlock.blocks[b].yMax) {
+					// tetrisGame.newBlock();
+					tetrisGame.currentBlock.moveDown = false;
+				}
+			}
+		}
+		
+		// check if block touches a side of the field and if there is a block to it's right
+		var checkRight = [];
+		var checkLeft = [];
+		var testCheck = [];
+		var passed = [];
+		
+		//check for every block in the moving shaoe if it is touching a static block, left or right.
+		for (let i = 0; i < tetrisGame.staticBlocks.length; i++) {
+			for (let b = 0; b < tetrisGame.currentBlock.blocks.length; b++) {
+				if (tetrisGame.staticBlocks[i].x == tetrisGame.currentBlock.blocks[b].x - blockWidth && //x - blockwidth checks for block left to pos
+					tetrisGame.staticBlocks[i].y == tetrisGame.currentBlock.blocks[b].y) {				//y
+					checkLeft.push(false);
+				} else {
+					checkLeft.push(true);
+				}
+				
+				if (tetrisGame.staticBlocks[i].x == tetrisGame.currentBlock.blocks[b].x + blockWidth && //x + blockwidth checks for block right to pos
+					tetrisGame.staticBlocks[i].y == tetrisGame.currentBlock.blocks[b].y) {				//y
+					checkRight.push(false);
+				} else {
+					checkRight.push(true);
+				}
+			}
+			
+		}
+		//go trough check array to finalise: (by doing it this way, it can't be set true again after being false)
+		//first right:
+		if (checkRight.includes(false) || tetrisGame.currentBlock.blocks[tetrisGame.maxRight].xMax >= tetrisGame.field.width * blockWidth + tetrisGame.field.x) {
+			tetrisGame.currentBlock.canMoveRight = false;
+			checkRight = [];
+		} else {
+			tetrisGame.currentBlock.canMoveRight = true;
+			checkRight = [];
+		}
+		//then left:
+		if (checkLeft.includes(false) || tetrisGame.currentBlock.blocks[tetrisGame.maxLeft].x <= tetrisGame.field.x) {
+			tetrisGame.currentBlock.canMoveLeft = false;
+			checkLeft = [];
+		} else {
+			tetrisGame.currentBlock.canMoveLeft = true;
+			checkLeft = [];
+		}
+		
+		//check if a line is completed: (by checking if there are [field.width] amount of blocks in the staticBlocks array wich share the same y value)
+		for (let y = 0; y < tetrisGame.field.height; y++) { //go through all "y" positions of the field
+			this.blockY = y * blockWidth + tetrisGame.field.y;
+			this.counter = 0;
+			for (let i = 0; i < tetrisGame.staticBlocks.length; i++) {
+				if (tetrisGame.staticBlocks[i].y == this.blockY) {
+					this.counter++;
+				}
+				if (this.counter == tetrisGame.field.width) {
+					tetrisGame.fullRowY = tetrisGame.staticBlocks[i].y;
+					tetrisGame.deleteRow();
+					tetrisGame.rowCounter++;
+					this.counter = 0;
+					tetrisGame.assignedScore = false;
+				}
+			}
+		}
+		if (!tetrisGame.assignedScore) {
+			console.log(tetrisGame.rowCounter);
+			tetrisGame.assignScore();
+			tetrisGame.assignedScore = true;
+		}
+		tetrisGame.rowCounter = 0;
+		
+		if (tetrisGame.gameOver) {
+			if (!this.backgroundGame) {
+				tetrisGame.gameOverCounter++;
+				ctx.textAlign = "center"
+				if (tetrisGame.gameOverCounter > 20) {
+					ctx.font = "60px segoe ui";
+					ctx.strokeStyle = "#000";
+					ctx.lineWidth = 5;
+					ctx.strokeText("GAME OVER",canvas.width/2,canvas.height/3);
+					ctx.fillStyle = "#fff";
+					ctx.fillText("GAME OVER",canvas.width/2,canvas.height/3);
+					
+				}
+				if (tetrisGame.gameOverCounter > 65) {
+					ctx.strokeStyle = "#000";
+					ctx.lineWidth = 5;
+					ctx.strokeText("YOUR SCORE: " + tetrisGame.score,canvas.width/2 - 3.5,canvas.height/3*2 - 3.5);
+					ctx.fillText("YOUR SCORE: " + tetrisGame.score,canvas.width/2 - 3.5,canvas.height/3*2 - 3.5);
+				}
+				if (tetrisGame.gameOverCounter > 170) {
+					loadHighscores(currentGame,tetrisGame.score);
+				}
+			} else {
+				tetrisGame.gameOverCounter++;
+				if (tetrisGame.gameOverCounter > 100) {
+					tetrisGame = new TetrisGame(true);
+				}
+			}
+		}
+ctx.restore();
+	}
 
-        this.player.queue[0].forEach((row, y) => {
-            row.forEach((value, x) => {
-                if(value !== 0){
-                    let positioning = this.player.queue[0].length / 2 % 0 ? -0.5 : 0;
-                    this.TetrisNextCtx.fillRect((x + 2 * this.window_scale + positioning) * this.blockSize + 4,
-                                      (y + 5) * this.blockSize + 4,
-                                      this.blockSize - 4,
-                                      this.blockSize - 4
-                    );
-                }
-            });
-        });
+	assignScore() {
+		if (tetrisGame.staticBlocks.length == 0) {
+			tetrisGame.score += 2000*(tetrisGame.level + 1);
+		} else {
+			switch (tetrisGame.rowCounter) {
+				case 1:
+					tetrisGame.score += 50*(tetrisGame.level + 1);
+					break;
+				case 2:
+					tetrisGame.score += 150*(tetrisGame.level + 1);
+					break;
+				case 3:
+					tetrisGame.score += 350*(tetrisGame.level + 1);
+					break;
+				case 4:
+					tetrisGame.score += 1000*(tetrisGame.level + 1);
+				break;
+			}
+		}
+	}
+	
+	deleteRow() {
+		for (let i = 0; i < tetrisGame.staticBlocks.length; i++) {
+			if (tetrisGame.staticBlocks[i].y == tetrisGame.fullRowY) {
+				tetrisGame.staticBlocks[i].toUpdate = false;
+			}
+		}
+		// tetrisGame.rowCounter = tetrisGame.rowCounter / tetrisGame.field.width;
+		
+		for (let i = 0; i < tetrisGame.staticBlocks.length; i++) { //moving blocks to another y pos, so they don't interfere (otherwise 2 rows would be deleted)
+			if (tetrisGame.staticBlocks[i].toUpdate == false) {
+				tetrisGame.staticBlocks[i].y = -300;
+			}
+		}
+		
+		for (let i = 0; i < tetrisGame.staticBlocks.length; i++) {
+			if (tetrisGame.staticBlocks[i].y < tetrisGame.fullRowY) {
+				tetrisGame.staticBlocks[i].y += blockWidth;
+			}
+		}
+		tetrisGame.fullRowY = 0;
+	}
+	
+	quit() {
+		
+	}
+}
 
-        this.player.queue[1].forEach((row, y) => {
-            row.forEach((value, x) => {
-                if(value !== 0){
-                    let positioning = this.player.queue[0].length / 2 % 0 ? -0.5 : 0;
-                    this.TetrisNextCtx.fillRect((x + 2 * this.window_scale + positioning) * this.blockSize + 4,
-                                      (y + 10) * this.blockSize + 4,
-                                      this.blockSize - 4,
-                                      this.blockSize - 4
-                    );
-                }
-            });
-        });
-    }
+function spawnShape(shape,x,y) {
+	this.x = x;
+	this.y = y;
+	this.shape = new shape;
+	for (let i = 0; i < this.shape.positions.length; i++) {
+		tetrisGame.staticBlocks.push(new blockObj(this.shape.positions[i].x + this.x, this.shape.positions[i].y + this.y,"#fff"))
+	}
+}
 
-    // used to draw all blocks
-    UpdateGridCanvas(){
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+function newTetrisGame() { 
+	if(typeof gameInterval !== "undefined")
+		gameInterval.stop();
+	
+	if(typeof overlayInterval !== "undefined")
+		overlayInterval.stop();
+		
+	OverlayIsActive = false;
+	
+	tetrisGame = new TetrisGame();
+	
+	gameInterval = new Interval(tetrisGame.update,20);
+}
 
-        this.ctx.strokeRect(0,0,this.canvas.width,this.canvas.height);
-
-        this.grid.forEach((row, y) => {
-            row.forEach((value, x) => {
-                if(value !== 0){
-                    this.ctx.fillRect(x * this.blockSize + 4,
-                                      y * this.blockSize + 4,
-                                      this.blockSize - 4,
-                                      this.blockSize - 4
-                    );
-                }
-            });
-        });
-        this.player.matrix.forEach((row, y) => {
-            row.forEach((value, x) => {
-                if(value !== 0){
-                    this.ctx.fillRect((x + this.player.position.x) * this.blockSize + 4,
-                                      (y + this.player.position.y) * this.blockSize + 4,
-                                      this.blockSize - 4,
-                                      this.blockSize - 4
-                    );
-                }
-            });
-        });
-    }
-
-    MatrixCollides(){
-        for(let y = 0; y < this.player.matrix.length; y++){
-            for(let x = 0; x < this.player.matrix[y].length; x++){
-                if(this.player.matrix[y][x] !== 0 &&         // are we checking a non block player matrix entity?
-                  (this.grid[y + this.player.position.y] &&     // does the row we are on exist?
-                   this.grid[y + this.player.position.y][x + this.player.position.x]) !== 0){   // are we on a tile which is already occupied? 
-                    return true;
-                }
-            }            
-        }
-        return false;
-    }
-    
-    MergeMatrixWithGrid(){
-        // merge the location of the player matrix in the grid
-        // move 1 position back as the merge will come after a move
-        this.player.position.y--;
-        this.player.matrix.forEach((row, y) => {
-            row.forEach((value, x) => {
-                if(value !== 0)
-                    this.grid[y + this.player.position.y][x + this.player.position.x] = value;
-            });
-        });
-
-        if(!interfaces.menu.active){
-            this.player.score += 20;    // for every new block add 20 points
-            this.ProcessMatrixPoints();
-            this.UpdateScoreCanvas();
-        }
-    }
-
-    ProcessMatrixPoints(){
-        let removed_rows = 0;
-        for(let r = 0; r < this.grid.length; r++){
-            let non_filled_row = false;
-            for(let c = 0; c < this.grid[r].length; c++){
-                if(this.grid[r][c] == 0){ // if there is a non filled place in the row we can skip the row
-                    non_filled_row = true;  // for the skipping of the first for loop
-                    break;                  // for stopping of this for loop
-                }
-            }
-            if(non_filled_row)
-                continue;
-                
-            // the whole row was filled! Remove the row and add a new one to the top
-            this.grid.splice(r,1);
-            this.grid.unshift(new Array(this.gridcollums).fill(0));
-            removed_rows++;
-        }
-
-        // check if there are any filled places in the grid
-        let grid_is_empty = true;
-        for(let r = 0; r < this.grid.length; r++)
-            for(let c = 0; c < this.grid[r].length; c++)
-                if(this.grid[r][c] == 1)
-                    grid_is_empty = false;
-
-        if(removed_rows !== 0){
-            this.player.combo++;
-            if(grid_is_empty)
-                this.player.score += 2000 * this.player.combo;
-            else{
-                switch(removed_rows){
-                    case 1:
-                        this.player.score += 50 * this.player.combo;
-                        break;
-                    case 2:
-                        this.player.score += 150 * this.player.combo;
-                        break;
-                    case 3:
-                        this.player.score += 350 * this.player.combo;
-                        break;
-                    case 4:
-                        this.player.score += 1000 * this.player.combo;
-                        break;
-                }
-            }
-        } else 
-            this.player.combo = 0;
-    }
-            
-    // every 60th execution the player y position will move 1 down
-    updateCurrentMatrixPosition(){
-        this.dropTimer++;
-        if(this.dropTimer >= this.dropInterval){
-            this.player.position.y++;
-            this.dropTimer -= this.dropInterval;
-        }
-    }
+function randomShape() {
+	this.random = randomNumber(0,7);
+	return eval("shape" + this.random);
 }
